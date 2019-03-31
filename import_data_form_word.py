@@ -17,11 +17,6 @@ def logset():
 logset()
 
 class pickup_emp():
-    docx_file = ''
-    data = {}
-    tables_info = {}
-    table_items = {}
-    table_items_clean = {}
     db_table_0_a = {
         'name':'姓名', 'gender':'性别', 'birthday':'出生年月',
         'nation':'民族', 'native':'籍贯','birthplace':'出生地',
@@ -31,7 +26,8 @@ class pickup_emp():
         'education2':'在职教育', 'academy2':'毕业院校系及专业',
         'post_now':'现任职务',
         'post_will':'拟任职务',
-        'post_remove':'拟免职务'
+        'post_remove':'拟免职务',
+        'end':'简历'
     }
     db_table_0_b = {
         'resume_time':'简历时间','resume_post':'简历岗位'
@@ -40,11 +36,21 @@ class pickup_emp():
     def __init__(self):
         pass
 
+    # 内部数据初始化
+    def initialize(self):
+        self.docx_file = ''             # 导入的 WORD 文件名：sample.docx
+        self.tables_info = {}           # WORD文档中表的信息：几个几行几列
+        self.table_items = {}           # 提取的表的初始数据：原始信息
+        self.table_items_clean = {}     # 清洗处理过后的数据：可用信息
+        self.import_to_db_data = {}     # 将要导入到数据表中的数据：精准信息
+        logging.debug('内部数据初始化')
+
     # 更换文件
     def updata_word_file(self,docx_file):
-        self.docx_file = docx_file
-        doc = docx.Document(self.docx_file)
-        self.tables = doc.tables  # 获取文件中的表格集
+        self.initialize()                   # 将内部数据初始化
+        self.docx_file = docx_file          # 更换文件名
+        doc = docx.Document(self.docx_file) # 打开文件
+        self.tables = doc.tables            # 获取文件中的表格集
         self.tables_info.update(word文件名=self.docx_file)
         self.tables_info.update(表格数量=len(self.tables))
         for n in range(0,len(self.tables)):
@@ -73,13 +79,13 @@ class pickup_emp():
     def clean_data(self):
         # 清洗数据：1.将（简历之前）连续的重复的数据去除；
         #          2.简历之后数据不作处理；
-        #          3.空数据删除, 换行符 '\n' 删除
+        #          3.空数据删除,删除头尾换行符'\n'
         # 数据源：self.table_items[0]
         # 生成后保存的位置：self.table_items_clean.update['db_table_0_a']
 
         data = [i for i in self.table_items[0] if i != '']
-        data = [i.replace(' ','').replace('　','').replace('\n','') for i in data]
-        last = '?'
+        data = [i.replace(' ','').replace('　','').strip('\n') for i in data]
+        last = ''
         del_items = []
         for n in range(0,len(data)):
             now = data[n]
@@ -87,7 +93,7 @@ class pickup_emp():
             if now == last:
                 del_items.append(n)
             last = now
-        print(del_items)
+
         data_clean = []
         for i in range(0,len(data)):
             if not i in del_items:
@@ -96,28 +102,33 @@ class pickup_emp():
         # 保存清理过的数据：表1的第1部分（简历之前）
         self.table_items_clean.update(db_table_0_a = data_clean)
 
+    # 生成可供导入数据表的精准数据，保存位置：import_to_db_data
+    def create_db_data(self):
+        data_source = self.table_items_clean['db_table_0_a']
+        print(data_source)
+        items_db_colume = self.db_table_0_a
+        print(items_db_colume)
 
-    def import_to_db(self):
-
+        xm = {}
+        for k in items_db_colume:
+            xm.update({k:[items_db_colume[k]]})
+            # TODO
+            # print(k,items_db_colume[k])
+        print(xm)
 
 
     def run(self):
         self.import_data_from_word_file()   # 导入数据
         self.clean_data()                   # 清洗数据
-        self.
+        self.create_db_data()               # 生成可供导入数据表的精准数据
+
 
 filelist = ['emp_sample.docx','emp_xxb.docx']
 w = pickup_emp()
-w.updata_word_file(filelist[1])
+w.updata_word_file(filelist[0])
 w.run()
 
 
 
 import sys
 sys.exit()
-a = w.table_items
-for i in a[0]:
-    print(i)
-
-for i in a[1]:
-    print(i)
