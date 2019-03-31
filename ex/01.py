@@ -14,3 +14,6 @@ print(w)
 print(w[0])
 print(w[1])
 print(w[2])
+
+for i in range(2,2):
+    print(i)

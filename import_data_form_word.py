@@ -80,11 +80,13 @@ class pickup_emp():
         # 清洗数据：1.将（简历之前）连续的重复的数据去除；
         #          2.简历之后数据不作处理；
         #          3.空数据删除,删除头尾换行符'\n'
+        #          4.编程需要，暂时去除中间的 '\n'
         # 数据源：self.table_items[0]
         # 生成后保存的位置：self.table_items_clean.update['db_table_0_a']
 
         data = [i for i in self.table_items[0] if i != '']
-        data = [i.replace(' ','').replace('　','').strip('\n') for i in data]
+        data = [i.replace(' ','').replace('　','').strip('\n').replace('\n','')
+                for i in data]
         last = ''
         del_items = []
         for n in range(0,len(data)):
@@ -101,26 +103,116 @@ class pickup_emp():
 
         # 保存清理过的数据：表1的第1部分（简历之前）
         self.table_items_clean.update(db_table_0_a = data_clean)
+        logging.info(self.table_items_clean['db_table_0_a'])
 
-    # 生成可供导入数据表的精准数据，保存位置：import_to_db_data
-    def create_db_data(self):
-        data_source = self.table_items_clean['db_table_0_a']
-        print(data_source)
+    # 生成可供导入数据表的精准数据:处理表1上半部分（姓名到简历以前）
+    # 数据来源：self.table_items_clean
+    # 保存位置：self.import_to_db_data
+    def create_db_data_t1a(self):
+        # 生成定位列表
         items_db_colume = self.db_table_0_a
-        print(items_db_colume)
-
         xm = {}
-        for k in items_db_colume:
-            xm.update({k:[items_db_colume[k]]})
-            # TODO
-            # print(k,items_db_colume[k])
+        k = [ i for i in items_db_colume.keys()]
+        v = [i for i in items_db_colume.values()]
+        for n in range(0,len(k)-1):
+            xm.update({k[n]:[v[n],v[n+1]]})
+
+        '''
         print(xm)
+        {'name': ['姓名', '性别'], 'gender': ['性别', '出生年月'], 
+        'birthday': ['出生年月', '民族'], 'nation': ['民族', '籍贯'], 
+        'native': ['籍贯', '出生地'], 'birthplace': ['出生地', '入党时间'],
+         'party_time': ['入党时间', '参加工作时间'], 
+         'work_time': ['参加工作时间', '健康状况'], 
+         'health': ['健康状况', '专业技术职务'], 
+         'profession': ['专业技术职务', '熟悉专业有何专长'],
+          'speciality': ['熟悉专业有何专长', '全日制教育'], 
+          'education1': ['全日制教育', '毕业院校系及专业'], 
+          'academy1': ['毕业院校系及专业', '在职教育'], 
+          'education2': ['在职教育', '毕业院校系及专业'], 
+          'academy2': ['毕业院校系及专业', '现任职务'], 
+          'post_now': ['现任职务', '拟任职务'], 
+          'post_will': ['拟任职务', '拟免职务'], 
+          'post_remove': ['拟免职务', '简历']}
+          
+        下面要做的工作，在清洗过后的数据 
+            self.table_items_clean.update['db_table_0_a']
+                (其格式为：
+                    ['姓名', '张某某', '性别', '男', 
+                    '出生年月\n(岁)', '1989.07\n（27岁）',
+                     '民族', '汉族', '籍贯', '浙江宁波', ....])
+        中，定位读取精准数据，如：
+            name 是在 ‘姓名’ 与 ‘性别’之间的数据
+        
+        '''
+
+        # 读取项目值
+        data_result = []
+        data_source = self.table_items_clean['db_table_0_a']
+        for x in xm:
+            # 读取项目。【参数】x：项目，xm[x]：项目的首尾区间
+            t = self.create_db_data_t1a_readxm(data_source,x,xm[x])
+
+            # 以元组形式保存项目信息，格式如：
+            # [('name', '姓名', '张某某'), ('gender', '性别', '男'), .....]
+            data_result.append((x,xm[x][0],t))
+
+        # 保存数据
+        self.import_to_db_data.update({'tb1a':data_result})
+        print(self.import_to_db_data)
+
+
+
+    def create_db_data_t1a_readxm(self,data_source,x,section):
+        '''
+        功能：被 create_db_data_t1a 调用，读取项目的值
+        :param data_source: word文档中表的值（经过清洗)
+        :param x:           项目（如 ‘姓名’ ）
+        :param section:     项目的值所在的区间（如在 姓名 和 性别 之间）
+        :return:            该项目的值（如：张某某）
+        '''
+
+        # 定位 section 0,其原理是：
+        #  set(data_source[n]) & set(x) == x
+        #  集合{data_source[n]} 与 集合 {x} 的值相符
+        # 如： {'出生年月\n(岁)'} & {出生年月} == {'出','生','年','月'}
+        for n in range(0,len(data_source)):
+            if set(data_source[n]) & set(section[0]) == set(section[0]):
+                list_number1 = n
+                break
+
+        # 定位 section 1
+        for n in range(0,len(data_source)):
+            if set(data_source[n]) & set(section[1]) == set(section[1]):
+                list_number2 = n
+                break
+
+        if list_number2 - list_number1 > 2:
+            logging.warning(
+                '取值可能有问题：{}|{}|{}|区间{}-{}'
+                    .format(self.docx_file, x, section[0],
+                            list_number1, list_number2))
+
+        t = ''
+        for i in range(list_number1+1,list_number2):
+            t += data_source[i]
+            if list_number2 - list_number1 > 2:
+                logging.debug('  -->{}|{}==> t:{}'.format(i,data_source[i],t))
+
+        if list_number2 - list_number1 > 2:
+            logging.debug('  ==>读取到的值(t):{}'.format(t))
+        else:
+            logging.debug('~~>读取到的值(t):{}'.format(t))
+
+        return t
 
 
     def run(self):
         self.import_data_from_word_file()   # 导入数据
         self.clean_data()                   # 清洗数据
-        self.create_db_data()               # 生成可供导入数据表的精准数据
+
+        # 生成可供导入数据表的精准数据
+        self.create_db_data_t1a()      # 表1 上半部分（简历以前）         
 
 
 filelist = ['emp_sample.docx','emp_xxb.docx']
@@ -128,6 +220,9 @@ w = pickup_emp()
 w.updata_word_file(filelist[0])
 w.run()
 
+a = w.table_items_clean['db_table_0_a']
+for i in range(0,len(a)):
+    print(i,a[i])
 
 
 import sys
