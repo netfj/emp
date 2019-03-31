@@ -45,13 +45,17 @@ db = SQLAlchemy(app)
 class Person(db.Model):
     __tablename__ = "persons"
     id          = db.Column(db.Integer, primary_key=True,autoincrement=True)
+    id_department = db.Column(db.Integer)
     name        = db.Column(db.String(64), unique=True)
-    birthday    = db.Column(db.Date())
+    birthday    = db.Column(db.String(30))
+    D_birthday  = db.Column(db.Date())
     nation      = db.Column(db.String(36))
     native      = db.Column(db.String(36))
     birthplace  = db.Column(db.String(36))
-    party_time  = db.Column(db.Date())
-    work_time   = db.Column(db.Date())
+    party_time  = db.Column(db.String(30))
+    D_party_time= db.Column(db.Date())
+    work_time   = db.Column(db.String(30))
+    D_work_time = db.Column(db.Date())
     health      = db.Column(db.String(36))
     profession  = db.Column(db.String(60))
     speciality  = db.Column(db.String(60))
@@ -81,8 +85,9 @@ class Person(db.Model):
     def __repr__(self):
         return '<Person:{}.{}>'.format(self.id,self.name)
 
-# 删除所有表（注意要终止以前开设的进程）
-db.drop_all()
+if __name__ == '__main__':
+    # 删除所有表（注意要终止以前开设的进程）
+    db.drop_all()
 
-# 创建表（前面定义的模型）
-db.create_all()
+    # 创建表（前面定义的模型）
+    db.create_all()
