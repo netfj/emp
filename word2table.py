@@ -70,12 +70,13 @@ class pickup_emp():
             tb_info.update({'表格{}的行列数量（行，列）'.format(n):(row,col)})
         self.table_info.update(table_info = tb_info)
 
-    # 提取表的数据，以 列表 形式，保存在-->字典：self.table_info['items_text']
+    # 提取表的原始数据，以 列表 形式，保存在-->字典：self.table_info['items_text']
     ''' 数据结构：列表，每项的含义{表的序号: [(行号，列号，内容TEXT), ...] 
     实例：{0: [(0, 0, '姓\u3000名'), (0, 1, '姓\u3000名'), 
             (0, 2, '张某某'), (0, 3, '性\u3000别'), (0, 4, '性\u3000别'), ...]
     '''
     def extract_from_word(self):
+
         d = {}
         for n in range(0, len(self.tables)):
             x = []
@@ -87,13 +88,16 @@ class pickup_emp():
                     x.append((r,c,t))
             d.update({n:x})
         self.table_info.update({'items_text':d})
+        logging.debug(self.table_info)  # 写入日志
 
     # 清洗数据  ： 1.有效取值，2.去空格、头尾换行符
     # 保存至字典： self.table_info_clean
     def extract_from_word_clean(self):
+        # word文档和表的有关信息
+        self.table_info_clean.update({'table_info':self.table_info['table_info']})
+
         # 处理表1的上半部分（简历之前）
         data = []
-
         data += self.get_line_0a(key='姓名')
         data += self.get_line_0a(key='民族')
         data += self.get_line_0a(key='入党时间')
@@ -103,11 +107,31 @@ class pickup_emp():
         data += self.get_line_0a(key='现任职务')
         data += self.get_line_0a(key='拟任职务')
         data += self.get_line_0a(key='拟免职务')
+        # 保存清洗后的数据: 表1上半部分（简历之前）
+        self.table_info_clean.update({'db_table_0a':data})
+        logging.debug(self.table_info_clean)
 
-        print(data)
+    # 生成可以插入到数据库表中的数据：精准数据
+    # 保存位置
+    def data2db_create(self):
+        # word文档和表的有关信息
+        self.data2db.update({'table_info':self.table_info['table_info']})
 
-        xm = self.db_table_0a
-        print(xm)
+        # 简历之前
+        data = self.table_info_clean['db_table_0a']     # 读取清洗过后的表0上半部分数据
+        d2b = {}    # 在这里存放将要存入数据库表中的精准数据
+        xm = self.db_table_0a   # 表0上半部分的项目列表：姓名、性别、民族...
+        for k in xm.keys():
+            # print(k,xm[k])
+            for index, value in enumerate(data):
+                if set(value) & set(xm[k]) == set(xm[k]):
+                    xm_value = data[index+1]
+                    break
+            d2b.update({k:xm_value})
+        self.data2db.update({'db_table_0a':d2b})
+        logging.debug(self.data2db)
+
+
 
 
 
@@ -120,7 +144,7 @@ class pickup_emp():
         lt = []
         for cell in ds:
             if cell[0] == row:
-                lt.append(cell[2].replace(' ', '').replace('　', '').replace('\n',''))
+                lt.append(cell[2].replace(' ', '').replace('　', ''))
 
         #去重
         lt2 = []
@@ -135,11 +159,16 @@ class pickup_emp():
 
     def run(self):
         logging.info('导入文件列表:'+  ('|').join(self.filelist))
-        for f in self.filelist:
+        fn = len(self.filelist)
+        for index,f in enumerate(self.filelist):
+            msg = '进程: {}/{} — {}'.format(index+1,fn,f)
+            logging.info(msg)
+            print(msg)
             self.updata_word_file(f)        # 更换当前导入文件
             self.extract_from_word()        # 提取原始数据
-            logging.debug(self.table_info)  # 写入日志
             self.extract_from_word_clean()  # 清洗数据
+            self.data2db_create()           # 提取精准数据（可以插入表中）
+            logging.info(msg + ' — 完成')
 
 
 

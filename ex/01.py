@@ -1,14 +1,11 @@
-#coding:utf-8
-# @Info: 
-# @Author:Netfj@sina.com @File:01.py @Time:2019/3/31 9:09
+
+a = [10,22,33,44]
 
 
-a=[]
-a.append((1,2,'3'))
-a.append((1,2,'3'))
-a.append((1,2,'3'))
-print(a)
+for index, value in enumerate(a):
+    print(index,value)
 
 
-a,b ,c =0,0,9
-print(a,b,c)
+a = {1:1,2:2,3:3}
+
+print(a[0])
