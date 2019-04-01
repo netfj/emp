@@ -1,6 +1,6 @@
 #coding:utf-8
 # @Info: 从人事档案表中提取数据
-# @Author:Netfj@sina.com @File:import_data_form_word.py @Time:2019/3/30 6:50
+# @Author:Netfj@sina.com @File:word2table.py @Time:2019/3/30 6:50
 
 import docx,logging
 def logset():
