@@ -22,7 +22,6 @@ def create_data(database_name = None):
             return ("数据库创建成功")
     else:
         return ('数据库已经存在')
-re = create_data('employee')
 
 # 建立表的模型
 app = Flask(__name__)
@@ -33,7 +32,7 @@ app.config["SQLALCHEMY_DATABASE_URI"]='mysql://root:root@localhost/employee'
 app.config["SQLALCHEMY_COMMIT_ON_TEARDOWN"] = True
 
 # 显示执行的SQL语句
-app.config['SQLALCHEMY_ECHO'] = True
+app.config['SQLALCHEMY_ECHO'] = False
 
 # 跟踪
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -44,30 +43,31 @@ db = SQLAlchemy(app)
 # 定义表的模型
 class Person(db.Model):
     __tablename__ = "persons"
-    id          = db.Column(db.Integer, primary_key=True,autoincrement=True)
-    id_department = db.Column(db.Integer)
-    name        = db.Column(db.String(64))
-    birthday    = db.Column(db.String(30))
-    D_birthday  = db.Column(db.Date())
-    nation      = db.Column(db.String(36))
-    native      = db.Column(db.String(36))
-    birthplace  = db.Column(db.String(36))
-    party_time  = db.Column(db.String(30))
-    D_party_time= db.Column(db.Date())
-    work_time   = db.Column(db.String(30))
-    D_work_time = db.Column(db.Date())
-    health      = db.Column(db.String(36))
-    profession  = db.Column(db.String(60))
-    speciality  = db.Column(db.String(60))
-    education1  = db.Column(db.String(60))
-    academy1    = db.Column(db.String(60))
-    education2  = db.Column(db.String(60))
-    academy2    = db.Column(db.String(60))
-    post_now    = db.Column(db.String(100))
-    post_will   = db.Column(db.String(100))
-    post_remove = db.Column(db.String(100))
-    resume_time = db.Column(db.String(36))
-    resume_post = db.Column(db.String(100))
+    id              = db.Column(db.Integer, primary_key=True,autoincrement=True)
+    id_department   = db.Column(db.Integer)
+    name            = db.Column(db.String(64))
+    gender          = db.Column(db.String(2))
+    birthday        = db.Column(db.String(30))
+    D_birthday      = db.Column(db.Date())
+    nation          = db.Column(db.String(36))
+    native          = db.Column(db.String(36))
+    birthplace      = db.Column(db.String(36))
+    party_time      = db.Column(db.String(30))
+    D_party_time    = db.Column(db.Date())
+    work_time       = db.Column(db.String(30))
+    D_work_time     = db.Column(db.Date())
+    health          = db.Column(db.String(36))
+    profession      = db.Column(db.String(60))
+    speciality      = db.Column(db.String(60))
+    education1      = db.Column(db.String(60))
+    academy1        = db.Column(db.String(60))
+    education2      = db.Column(db.String(60))
+    academy2        = db.Column(db.String(60))
+    post_now        = db.Column(db.String(100))
+    post_will       = db.Column(db.String(100))
+    post_remove     = db.Column(db.String(100))
+    resume_time     = db.Column(db.String(36))
+    resume_post     = db.Column(db.String(100))
 
     '''
         'name':'姓名', 'gender':'性别', 'birthday':'出生年月',
@@ -85,9 +85,30 @@ class Person(db.Model):
     def __repr__(self):
         return '<Person:{}.{}>'.format(self.id,self.name)
 
+
+# 定义word文件信息的模型
+class Record_info(db.Model):
+    __tablename__ = "record_infos"
+    id          = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id_person   = db.Column(db.Integer)
+    mode        = db.Column(db.String(36))
+    info        = db.Column(db.String(1280))
+    data_souce  = db.Column(db.Text)
+    data_clean  = db.Column(db.Text)
+    data2db     = db.Column(db.Text)
+    dt          = db.Column(db.DateTime)
+
+
+
 if __name__ == '__main__':
+    # 建立数据库
+    re = create_data('employee')
+    print(re)
+
     # 删除所有表（注意要终止以前开设的进程）
     db.drop_all()
+    print('删除表完成！')
 
     # 创建表（前面定义的模型）
     db.create_all()
+    print('建表完成！')

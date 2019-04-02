@@ -2,7 +2,11 @@
 # @Info: 从人事档案表中提取数据
 # @Author:Netfj@sina.com @File:word2table.py @Time:2019/3/30 6:50
 
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+from setup_database import app, Person, Record_info
 import docx,logging
+
 def logset():
     filename='runinfo.log'
     level_grade = logging.DEBUG
@@ -122,7 +126,6 @@ class pickup_emp():
         d2b = {}    # 在这里存放将要存入数据库表中的精准数据
         xm = self.db_table_0a   # 表0上半部分的项目列表：姓名、性别、民族...
         for k in xm.keys():
-            # print(k,xm[k])
             for index, value in enumerate(data):
                 if set(value) & set(xm[k]) == set(xm[k]):
                     xm_value = data[index+1]
@@ -154,17 +157,34 @@ class pickup_emp():
         return lt2
 
     def import_data_to_table(self):
-        from flask_sqlalchemy import SQLAlchemy
-        from setup_database import app,Person
+
         db = SQLAlchemy(app)
-        d = self.data2db['db_table_0a']
-        print(d)
-        xm = self.db_table_0a
-        print(xm)
+
+        # 增加人员档案
         person = Person()
 
+        # 表0 上半部分
+        d = self.data2db['db_table_0a']     # 读取清洗过后的表0上半部分数据
+        person.name         = d['name']
+        person.gender       = d['gender']
+        person.birthday     = d['birthday']
+        person.nation       = d['nation']
+        person.native       = d['native']
+        person.birthplace   = d['birthplace']
+        person.party_time   = d['party_time']
+        person.work_time    = d['work_time']
+        person.health       = d['health']
+        person.profession   = d['profession']
+        person.speciality   = d['speciality']
+        person.education1   = d['education1']
+        person.academy1     = d['academy1']
+        person.education2   = d['education2']
+        person.academy2     = d['academy2']
+        person.post_now     = d['post_now']
+        person.post_will    = d['post_will']
+        person.post_remove  = d['post_remove']
 
-        ''' 从 
+        ''' 从 self.data2db['db_table_0a'] 中提取数据写入数据库，项目如下：
             'name': '姓名', 'gender': '性别', 'birthday': '出生年月',
             'nation': '民族', 'native': '籍贯', 'birthplace': '出生地',
             'party_time': '入党时间', 'work_time': '参加工作时间', 'health': '健康状况',
@@ -176,8 +196,35 @@ class pickup_emp():
             'post_remove': '拟免职务'
         '''
 
-        db.session.add(Person(name='张三2'))
-        db.session.commit()
+
+        # 将表的信息写入数据库
+        try:
+            db.session.add(person)
+            db.session.commit()
+
+            # 将工作过程写入辅助表 record_info
+
+            record_info = Record_info()
+            record_info.id_person = person.id
+            record_info.mode = 'word'
+            record_info.info = self.docx_file
+            # record_info.data_souce = self.table_info
+            # record_info.data_clean = self.table_info_clean
+            # record_info.data2db = self.data2db
+            record_info.dt = datetime.today()
+
+            try:
+                db.session.add(record_info)
+                db.session.commit()
+            except Exception as e:
+                logging.error('写入工作过程错误')
+                db.session.rollback()
+
+
+        except Exception as e:
+            logging.error('写入数据库错误:{}'.format(self.data2db['db_table_0a']))
+            db.session.rollback()
+
 
 
     def run(self):
