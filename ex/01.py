@@ -1,11 +1,17 @@
+x = {'leg':2,'mouse':1}
 
-a = [10,22,33,44]
+class Person():
+    leg = -1
+    mouse = -1
 
+for k,v in x.items():
+    print(k,v)
 
-for index, value in enumerate(a):
-    print(index,value)
+p = Person()
 
+print(p.leg,p.mouse)
 
-a = {1:1,2:2,3:3}
-
-print(a[0])
+bl = (dir(p))
+for i in bl:
+    print(i)
+    print(type(i))

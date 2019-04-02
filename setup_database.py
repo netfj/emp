@@ -46,7 +46,7 @@ class Person(db.Model):
     __tablename__ = "persons"
     id          = db.Column(db.Integer, primary_key=True,autoincrement=True)
     id_department = db.Column(db.Integer)
-    name        = db.Column(db.String(64), unique=True)
+    name        = db.Column(db.String(64))
     birthday    = db.Column(db.String(30))
     D_birthday  = db.Column(db.Date())
     nation      = db.Column(db.String(36))

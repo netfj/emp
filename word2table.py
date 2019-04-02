@@ -27,7 +27,7 @@ class pickup_emp():
         'post_will':'拟任职务',
         'post_remove':'拟免职务'
     }
-    db_table_0_b = {
+    db_table_0b = {
         'resume_time':'简历时间','resume_post':'简历岗位'
     }
 
@@ -131,10 +131,6 @@ class pickup_emp():
         self.data2db.update({'db_table_0a':d2b})
         logging.debug(self.data2db)
 
-
-
-
-
     def get_line_0a(self, key='项目名称'):
         ds = self.table_info['items_text'][0]  # 提取的原始数据
         for cell in ds:
@@ -157,6 +153,33 @@ class pickup_emp():
 
         return lt2
 
+    def import_data_to_table(self):
+        from flask_sqlalchemy import SQLAlchemy
+        from setup_database import app,Person
+        db = SQLAlchemy(app)
+        d = self.data2db['db_table_0a']
+        print(d)
+        xm = self.db_table_0a
+        print(xm)
+        person = Person()
+
+
+        ''' 从 
+            'name': '姓名', 'gender': '性别', 'birthday': '出生年月',
+            'nation': '民族', 'native': '籍贯', 'birthplace': '出生地',
+            'party_time': '入党时间', 'work_time': '参加工作时间', 'health': '健康状况',
+            'profession': '专业技术职务', 'speciality': '熟悉专业有何专长',
+            'education1': '全日制教育', 'academy1': '毕业院校系及专业',
+            'education2': '在职教育', 'academy2': '毕业院校系及专业',
+            'post_now': '现任职务',
+            'post_will': '拟任职务',
+            'post_remove': '拟免职务'
+        '''
+
+        db.session.add(Person(name='张三2'))
+        db.session.commit()
+
+
     def run(self):
         logging.info('导入文件列表:'+  ('|').join(self.filelist))
         fn = len(self.filelist)
@@ -168,12 +191,15 @@ class pickup_emp():
             self.extract_from_word()        # 提取原始数据
             self.extract_from_word_clean()  # 清洗数据
             self.data2db_create()           # 提取精准数据（可以插入表中）
+            self.import_data_to_table()     # 导入数据
+
             logging.info(msg + ' — 完成')
 
+if __name__ == '__main__':
+    filelist = ['emp_sample.docx','emp_xxb.docx']
+    w = pickup_emp(filelist)
 
 
-filelist = ['emp_sample.docx','emp_xxb.docx']
-w = pickup_emp(filelist)
 
-import sys
-sys.exit()
+    import sys
+    sys.exit()
