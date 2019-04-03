@@ -34,6 +34,13 @@ class pickup_emp():
     db_table_0b = {
         'resume_time':'简历时间','resume_post':'简历岗位'
     }
+    db_table_1a = {
+        'reward':'奖惩情况','evaluation':'年度考核结果','reason':'任免理由'
+    }
+    db_table_1b = {
+        'title':'称谓','name':'姓名','birthday':'出生年月',
+        'party':'政治面貌','work':'工作单位及职务'
+    }
 
     def __init__(self,filelist=None):
         if filelist:
@@ -127,18 +134,30 @@ class pickup_emp():
         # 保存清洗后的数据: 表0下半部分（简历之前）
         self.table_info_clean.update({'db_table_0b': data_0b_new})
 
+        # 处理表1的上半部分（奖惩、考核、任免理由） =======================
+        data_1a = []
+        data_1a += self.get_line(table_number = 1, key='奖惩情况')
+        data_1a += self.get_line(table_number = 1, key='年度考核结果')
+        data_1a += self.get_line(table_number = 1, key='任免理由')
+
+        # 修整：去首尾换行符 '\n'
+        data_1a_new = [i.strip('\n') for i in data_1a]
+
+        # 保存清洗后的数据: 表1上半部分
+        self.table_info_clean.update({'db_table_1a': data_1a_new})
+
 
         # 将清洗后的数据，保存到日志 =================================
         logging.debug(self.table_info_clean)
 
 
-    def get_line(self, key='项目名称'):
+    def get_line(self, table_number = 0, key='项目名称'):
         '''
         从原始数据提取不重复的行，并作适当处理（去重）
         :param key: 起头的项目名称
         :return:    列表：起头的项目名称，该行的一行的数据
         '''
-        ds = self.table_info['items_text'][0]  # 提取的原始数据
+        ds = self.table_info['items_text'][table_number]  # 提取的原始数据
         for cell in ds:
             if set(cell[2]) & set(key) == set(key):
                 row = cell[0]
@@ -178,16 +197,21 @@ class pickup_emp():
             d2b.update({k:xm_value})
         self.data2db.update({'db_table_0a':d2b})
 
-
         # 处理表0下半部分（简历）=============================
         # 读取清洗过后的表0下半部分数据（简历）:
         #   后面加一个空项（因为有的没有两列填写）
         data = self.table_info_clean['db_table_0b'] + ['']
         d2b = {
-            'resume_time': data[1], 'resume_post':data[2]
+            'resume_time': data[1], 'resume_post': data[2]
         }
-        self.data2db.update({'db_table_0b':d2b})
+        self.data2db.update({'db_table_0b': d2b})
 
+        # 处理表1上半部分（奖惩、考核、任免理由）===============
+        data = self.table_info_clean['db_table_1a']
+        d2b = {
+            'reward': data[1], 'evaluation': data[3], 'reason': data[5]
+        }
+        self.data2db.update({'db_table_1a': d2b})
 
         # 写入日志 ==================================
         logging.debug(self.data2db)
@@ -200,16 +224,17 @@ class pickup_emp():
             # 表0 上半部分（简历以前）
             result = db.session.execute(Person.__table__.insert(),
                                         self.data2db['db_table_0a'])
-            db.session.commit()
+            # db.session.commit()
 
             # 表0 下半部分（简历）
-            d2b = {'resume_time':self.data2db['db_table_0b']['resume_time'],
-                              'resume_post':self.data2db['db_table_0b']['resume_post']}
-            print(d2b)
-            db.session.query(Person).filter(id =  result.lastrowid ).update(d2b)
-            db.commit()
-            # TODO
+            d2b = self.data2db['db_table_0b']
+            db.session.query(Person).filter(Person.id == result.lastrowid ).update(d2b)
+            # db.session.commit()
 
+            # 表1 上半部分（奖惩、考核、任免）
+            d2b = self.data2db['db_table_1a']
+            db.session.query(Person).filter(Person.id == result.lastrowid ).update(d2b)
+            db.session.commit()
 
             # 将工作过程写入辅助表 record_info
             record_info = Record_info()

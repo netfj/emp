@@ -40,10 +40,35 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # 实例化连接
 db = SQLAlchemy(app)
 
+''' 定义表结构：表0上、下，表1上部分 --> persons；
+                表1下          部分 --> home
+db_table_0a = {
+    'name':'姓名', 'gender':'性别', 'birthday':'出生年月',
+    'nation':'民族', 'native':'籍贯','birthplace':'出生地',
+    'party_time':'入党时间', 'work_time':'参加工作时间','health':'健康状况',
+    'profession':'专业技术职务','speciality':'熟悉专业有何专长',
+    'education1':'全日制教育', 'academy1':'毕业院校系及专业',
+    'education2':'在职教育', 'academy2':'毕业院校系及专业',
+    'post_now':'现任职务',
+    'post_will':'拟任职务',
+    'post_remove':'拟免职务'
+}
+db_table_0b = {
+    'resume_time':'简历时间','resume_post':'简历岗位'
+}
+db_table_1a = {
+    'reward':'奖惩情况','evaluation':'年度考核结果','reason':'任免理由'
+}
+db_table_1b = {
+    'title':'称谓','name':'姓名','birthday':'出生年月',
+    'party':'政治面貌','work':'工作单位及职务'
+}
+'''
+
 # 定义表的模型
 class Person(db.Model):
     __tablename__ = "persons"
-    id              = db.Column(db.Integer, primary_key=True,autoincrement=True)
+    id              = db.Column(db.Integer, primary_key=True, autoincrement=True)
     id_department   = db.Column(db.Integer)
     name            = db.Column(db.String(64))
     gender          = db.Column(db.String(2))
@@ -66,24 +91,30 @@ class Person(db.Model):
     post_now        = db.Column(db.String(100))
     post_will       = db.Column(db.String(100))
     post_remove     = db.Column(db.String(100))
-    resume_time     = db.Column(db.String(3000))
-    resume_post     = db.Column(db.String(3000))
-
-    '''
-        'name':'姓名', 'gender':'性别', 'birthday':'出生年月',
-        'nation':'民族', 'native':'籍贯','birthplace':'出生地',
-        'party_time':'入党时间', 'work_time':'参加工作时间','health':'健康状况',
-        'profession':'专业技术职务','speciality':'熟悉专业有何专长',
-        'education1':'全日制教育', 'academy1':'毕业院校系及专业',
-        'education2':'在职教育', 'academy2':'毕业院校系及专业',
-        'post_now':'现任职务',
-        'post_will':'拟任职务',
-        'post_remove':'拟免职务',
-        'resume_time':'简历时间','resume_post':'简历岗位'
-    '''
+    resume_time     = db.Column(db.Text)
+    resume_post     = db.Column(db.Text)
+    reward          = db.Column(db.String(1000))
+    evaluation      = db.Column(db.String(1000))
+    reason          = db.Column(db.String(200))
 
     def __repr__(self):
         return '<Person:{}.{}>'.format(self.id,self.name)
+
+
+class Home(db.Model):
+    __tablename__ = "home"
+    id              = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id_person       = db.Column(db.Integer)
+    title           = db.Column(db.String(20))
+    name            = db.Column(db.String(36))
+    birthday        = db.Column(db.String(36))
+    D_birthday      = db.Column(db.Date)
+    party           = db.Column(db.String(20))
+    work            = db.Column(db.String(60))
+
+
+    def __repr__(self):
+        return '<Home:{}.{}.{}>'.format(self.id,self.id_person,self.name)
 
 
 # 定义word文件信息的模型
@@ -100,7 +131,8 @@ class Record_info(db.Model):
 
 
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # 建立数据库
     re = create_data('employee')
     print(re)
