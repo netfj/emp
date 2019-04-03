@@ -1,6 +1,6 @@
 #coding:utf-8
 # @Info: 从人事档案表中提取数据
-# @Author:Netfj@sina.com @File:word2table.py @Time:2019/3/30 6:50
+# @Author:Netfj@sina.com @File:word2db.py @Time:2019/3/30 6:50
 
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
@@ -80,7 +80,6 @@ class pickup_emp():
             (0, 2, '张某某'), (0, 3, '性\u3000别'), (0, 4, '性\u3000别'), ...]
     '''
     def extract_from_word(self):
-
         d = {}
         for n in range(0, len(self.tables)):
             x = []
@@ -94,26 +93,71 @@ class pickup_emp():
         self.table_info.update({'items_text':d})
         logging.debug(self.table_info)  # 写入日志
 
-    # 清洗数据  ： 1.有效取值，2.去空格、头尾换行符
+    # 清洗数据  ： 1.有效取值，2.视情况，去空格、头尾换行符
     # 保存至字典： self.table_info_clean
     def extract_from_word_clean(self):
         # word文档和表的有关信息
         self.table_info_clean.update({'table_info':self.table_info['table_info']})
 
-        # 处理表1的上半部分（简历之前）
-        data = []
-        data += self.get_line_0a(key='姓名')
-        data += self.get_line_0a(key='民族')
-        data += self.get_line_0a(key='入党时间')
-        data += self.get_line_0a(key='专业技术职务')
-        data += self.get_line_0a(key='全日制教育')
-        data += self.get_line_0a(key='在职教育')
-        data += self.get_line_0a(key='现任职务')
-        data += self.get_line_0a(key='拟任职务')
-        data += self.get_line_0a(key='拟免职务')
-        # 保存清洗后的数据: 表1上半部分（简历之前）
-        self.table_info_clean.update({'db_table_0a':data})
+        # 处理表0的上半部分（简历之前） ===============================
+        data_0a = []
+        data_0a += self.get_line(key='姓名')
+        data_0a += self.get_line(key='民族')
+        data_0a += self.get_line(key='入党时间')
+        data_0a += self.get_line(key='专业技术职务')
+        data_0a += self.get_line(key='全日制教育')
+        data_0a += self.get_line(key='在职教育')
+        data_0a += self.get_line(key='现任职务')
+        data_0a += self.get_line(key='拟任职务')
+        data_0a += self.get_line(key='拟免职务')
+
+        # 修整：去空格
+        data_0a_new = [ i.replace(' ', '').replace('　', '') for i in data_0a]
+
+        # 保存清洗后的数据: 表0上半部分（简历之前）
+        self.table_info_clean.update({'db_table_0a':data_0a_new})
+
+        # 处理表0的下半部分（简历） =====================================
+        data_0b = []
+        data_0b += self.get_line(key='简历')
+
+        # 修整：去首尾换行符 '\n'
+        data_0b_new = [i.strip('\n') for i in data_0b]
+
+        # 保存清洗后的数据: 表0下半部分（简历之前）
+        self.table_info_clean.update({'db_table_0b': data_0b_new})
+
+
+        # 将清洗后的数据，保存到日志 =================================
         logging.debug(self.table_info_clean)
+
+
+    def get_line(self, key='项目名称'):
+        '''
+        从原始数据提取不重复的行，并作适当处理（去重）
+        :param key: 起头的项目名称
+        :return:    列表：起头的项目名称，该行的一行的数据
+        '''
+        ds = self.table_info['items_text'][0]  # 提取的原始数据
+        for cell in ds:
+            if set(cell[2]) & set(key) == set(key):
+                row = cell[0]
+                break
+        lt = []
+        for cell in ds:
+            if cell[0] == row:
+                lt.append(cell[2])
+
+        # 去重
+        lt2 = []
+        for x in lt:
+            if len(lt2) == 0:  # 新列表为空时，先放一个元素
+                lt2.append(x)
+                continue
+            if x != lt2[-1]:  # 新追加时，查看与新列表最后一个元素是否相等
+                lt2.append(x)
+
+        return lt2
 
     # 生成可以插入到数据库表中的数据：精准数据
     # 保存位置
@@ -121,8 +165,9 @@ class pickup_emp():
         # word文档和表的有关信息
         self.data2db.update({'table_info':self.table_info['table_info']})
 
-        # 简历之前
-        data = self.table_info_clean['db_table_0a']     # 读取清洗过后的表0上半部分数据
+        # 处理表0上半部分（简历之前）=============================
+        # 读取清洗过后的表0上半部分数据
+        data = self.table_info_clean['db_table_0a']
         d2b = {}    # 在这里存放将要存入数据库表中的精准数据
         xm = self.db_table_0a   # 表0上半部分的项目列表：姓名、性别、民族...
         for k in xm.keys():
@@ -132,38 +177,38 @@ class pickup_emp():
                     break
             d2b.update({k:xm_value})
         self.data2db.update({'db_table_0a':d2b})
+
+
+        # 处理表0下半部分（简历）=============================
+        # 读取清洗过后的表0下半部分数据（简历）:
+        #   后面加一个空项（因为有的没有两列填写）
+        data = self.table_info_clean['db_table_0b'] + ['']
+        d2b = {
+            'resume_time': data[1], 'resume_post':data[2]
+        }
+        self.data2db.update({'db_table_0b':d2b})
+
+
+        # 写入日志 ==================================
         logging.debug(self.data2db)
-
-    def get_line_0a(self, key='项目名称'):
-        ds = self.table_info['items_text'][0]  # 提取的原始数据
-        for cell in ds:
-            if set(cell[2]) & set(key) == set(key):
-                row = cell[0]
-                break
-        lt = []
-        for cell in ds:
-            if cell[0] == row:
-                lt.append(cell[2].replace(' ', '').replace('　', ''))
-
-        #去重
-        lt2 = []
-        for x in lt:
-            if len(lt2) == 0:       # 新列表为空时，先放一个元素
-                lt2.append(x)
-                continue
-            if x != lt2[-1]:        # 新追加时，查看与新列表最后一个元素是否相等
-                lt2.append(x)
-
-        return lt2
 
     def import_data_to_table(self):
         db = SQLAlchemy(app)
 
         # 将表的信息写入数据库
         try:
-            # 表0 上半部分
-            result = db.session.execute(Person.__table__.insert(),self.data2db['db_table_0a'])
+            # 表0 上半部分（简历以前）
+            result = db.session.execute(Person.__table__.insert(),
+                                        self.data2db['db_table_0a'])
             db.session.commit()
+
+            # 表0 下半部分（简历）
+            d2b = {'resume_time':self.data2db['db_table_0b']['resume_time'],
+                              'resume_post':self.data2db['db_table_0b']['resume_post']}
+            print(d2b)
+            db.session.query(Person).filter(id =  result.lastrowid ).update(d2b)
+            db.commit()
+            # TODO
 
 
             # 将工作过程写入辅助表 record_info
@@ -185,7 +230,7 @@ class pickup_emp():
 
 
         except Exception as e:
-            logging.error('写入数据库错误:{}'.format(self.data2db['db_table_0a']))
+            logging.error('写入数据库错误:{}'.format(self.data2db))
             db.session.rollback()
 
 

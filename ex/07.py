@@ -16,12 +16,18 @@ re = db.session.execute(Person.__table__.insert(),
 
 re2 = db.session.commit()
 
-re3 = db.session.execute('select id,name from employee.persons').fetchall()
-print(re3)
+# re3 = db.session.execute('select id,name from employee.persons').fetchall()
+# print(re3)
 
-re4 = db.session.query(Person)
+print('==========')
+re4 = db.session.query(Person).filter_by(id = 98)
 for i in re4:
     print(i.id,i.name)
 
-db.session.query(Person).delete()
-db.session.commit()
+print('---------')
+
+re5 = Person.query.filter(Person.id>88).all()   # 这是迭代器
+for i in re5:
+    print(i.id,i.name)
+
+

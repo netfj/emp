@@ -66,8 +66,8 @@ class Person(db.Model):
     post_now        = db.Column(db.String(100))
     post_will       = db.Column(db.String(100))
     post_remove     = db.Column(db.String(100))
-    resume_time     = db.Column(db.String(36))
-    resume_post     = db.Column(db.String(100))
+    resume_time     = db.Column(db.String(3000))
+    resume_post     = db.Column(db.String(3000))
 
     '''
         'name':'姓名', 'gender':'性别', 'birthday':'出生年月',
