@@ -157,60 +157,23 @@ class pickup_emp():
         return lt2
 
     def import_data_to_table(self):
-
         db = SQLAlchemy(app)
-
-        # 增加人员档案
-        person = Person()
-
-        # 表0 上半部分
-        d = self.data2db['db_table_0a']     # 读取清洗过后的表0上半部分数据
-        person.name         = d['name']
-        person.gender       = d['gender']
-        person.birthday     = d['birthday']
-        person.nation       = d['nation']
-        person.native       = d['native']
-        person.birthplace   = d['birthplace']
-        person.party_time   = d['party_time']
-        person.work_time    = d['work_time']
-        person.health       = d['health']
-        person.profession   = d['profession']
-        person.speciality   = d['speciality']
-        person.education1   = d['education1']
-        person.academy1     = d['academy1']
-        person.education2   = d['education2']
-        person.academy2     = d['academy2']
-        person.post_now     = d['post_now']
-        person.post_will    = d['post_will']
-        person.post_remove  = d['post_remove']
-
-        ''' 从 self.data2db['db_table_0a'] 中提取数据写入数据库，项目如下：
-            'name': '姓名', 'gender': '性别', 'birthday': '出生年月',
-            'nation': '民族', 'native': '籍贯', 'birthplace': '出生地',
-            'party_time': '入党时间', 'work_time': '参加工作时间', 'health': '健康状况',
-            'profession': '专业技术职务', 'speciality': '熟悉专业有何专长',
-            'education1': '全日制教育', 'academy1': '毕业院校系及专业',
-            'education2': '在职教育', 'academy2': '毕业院校系及专业',
-            'post_now': '现任职务',
-            'post_will': '拟任职务',
-            'post_remove': '拟免职务'
-        '''
-
 
         # 将表的信息写入数据库
         try:
-            db.session.add(person)
+            # 表0 上半部分
+            result = db.session.execute(Person.__table__.insert(),self.data2db['db_table_0a'])
             db.session.commit()
 
-            # 将工作过程写入辅助表 record_info
 
+            # 将工作过程写入辅助表 record_info
             record_info = Record_info()
-            record_info.id_person = person.id
+            record_info.id_person = result.lastrowid    # 增加记录的id号
             record_info.mode = 'word'
             record_info.info = self.docx_file
-            # record_info.data_souce = self.table_info
-            # record_info.data_clean = self.table_info_clean
-            # record_info.data2db = self.data2db
+            record_info.data_souce = '{}'.format(self.table_info)
+            record_info.data_clean = '{}'.format(self.table_info_clean)
+            record_info.data2db = '{}'.format(self.data2db)
             record_info.dt = datetime.today()
 
             try:
