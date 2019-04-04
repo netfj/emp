@@ -5,7 +5,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from setup_database import app, Person, Record_info
-import docx,logging
+import docx,logging,os
 
 def logset():
     filename='runinfo.log'
@@ -275,9 +275,40 @@ class pickup_emp():
 
             logging.info(msg + ' — 完成')
 
+class file_list():
+    def __init__(self, path = '', ext=['docx','doc']):
+        self.path = path
+        self.ext = ext
+        self.file_list = []
+
+        self.get_file(self.path)
+
+    def get_file(self, path):
+        list = os.listdir(path)
+        for i in range(0,len(list)):
+            file_or_dir = os.path.join(path,list[i])
+            if os.path.isfile(file_or_dir):
+                self.file_list.append(file_or_dir)
+            else:
+                self.get_file(file_or_dir)
+
+
+
+
+
+
 if __name__ == '__main__':
+
+    path = 'v:\\User\\人员档案资料'
+    path = r'v:\User\人员档案资料\01.机关\01.办公室（11人）'
+    f = file_list(path=path)
+    for i in f.file_list:
+        print(i)
+
     filelist = ['emp_sample.docx','emp_xxb.docx']
+    filelist = f.file_list
     w = pickup_emp(filelist)
+
 
 
 
