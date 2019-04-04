@@ -275,8 +275,8 @@ class pickup_emp():
 
             logging.info(msg + ' — 完成')
 
-class file_list():
-    def __init__(self, path = '', ext=['docx','doc']):
+class get_file_list():
+    def __init__(self, path = '', ext=['.docx','.doc']):
         self.path = path
         self.ext = ext
         self.file_list = []
@@ -288,20 +288,17 @@ class file_list():
         for i in range(0,len(list)):
             file_or_dir = os.path.join(path,list[i])
             if os.path.isfile(file_or_dir):
-                self.file_list.append(file_or_dir)
+                if os.path.splitext(file_or_dir)[1] in self.ext:
+                    self.file_list.append(file_or_dir)
             else:
                 self.get_file(file_or_dir)
-
-
-
-
 
 
 if __name__ == '__main__':
 
     path = 'v:\\User\\人员档案资料'
     path = r'v:\User\人员档案资料\01.机关\01.办公室（11人）'
-    f = file_list(path=path)
+    f = get_file_list(path=path)
     for i in f.file_list:
         print(i)
 
