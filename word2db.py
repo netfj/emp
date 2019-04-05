@@ -146,6 +146,17 @@ class pickup_emp():
         # 保存清洗后的数据: 表1上半部分
         self.table_info_clean.update({'db_table_1a': data_1a_new})
 
+        # 处理表1的 下 半部分（家庭主要成员） =======================
+        data_1b =[]
+        data_home = self.get_lines(key='家庭主要成员及重要社会关系')
+        for key,value in data_home.items():
+            if len(value)>=6:
+                if not set(value[1]) & set('称谓') == set('称谓'):
+                    data_1b.append({'title':value[1],'name':value[2],
+                                   'birthday':value[3],'party':value[4],
+                                    'work':value[5]})
+        # 保存清洗后的数据: 表1下半部分
+        self.table_info_clean.update({'db_table_1b': data_1b})
 
         # 将清洗后的数据，保存到日志 =================================
         logging.debug(self.table_info_clean)
@@ -153,7 +164,7 @@ class pickup_emp():
 
     def get_line(self, table_number = 0, key='项目名称'):
         '''
-        从原始数据提取不重复的行，并作适当处理（去重）
+        从原始数据提取【不重复】的行，并作适当处理（去重）
         :param key: 起头的项目名称
         :return:    列表：起头的项目名称，该行的一行的数据
         '''
@@ -177,6 +188,32 @@ class pickup_emp():
                 lt2.append(x)
 
         return lt2
+
+    def get_lines(self,key=None, table_number = 1):
+        '''
+        提取首字段是 key 的【所有行】。设计目的：用于提取表1【家庭主要成员及重要社会关系】
+        :param key: 起头的字段名称，如 “家庭主要成员及重要社会关系”
+        :return: 字典(各行的集合)，如：{列表1,列表2,...}
+        '''
+        result = {}
+        ds = self.table_info['items_text'][table_number]  # 提取的原始数据
+        for cell in ds:
+            if set(cell[2]) & set(key) == set(key):
+                row = cell[0]
+                lt = []
+                for cell in ds:
+                    if cell[0] == row:
+                        t = cell[2].replace('\n','')
+                        if t!='':lt.append(t)
+                result.update({row:lt})
+        # 去重 #TODO
+        tmp = {}
+        for key,value in result.items():
+            lt = []
+            [lt.append(i) for i in value if  i not in lt]
+            if  lt not in tmp.values():
+                tmp.update({key:lt})
+        return tmp
 
     # 生成可以插入到数据库表中的数据：精准数据
     # 保存位置
@@ -213,6 +250,12 @@ class pickup_emp():
         }
         self.data2db.update({'db_table_1a': d2b})
 
+        # 处理表1下半部分（家庭主要成员）===============
+            # 直接引用清洗后的数据即可
+        d2b = self.table_info_clean['db_table_1b']
+        self.data2db.update({'db_table_1b':d2b})
+
+
         # 写入日志 ==================================
         logging.debug(self.data2db)
 
@@ -236,6 +279,9 @@ class pickup_emp():
             db.session.query(Person).filter(Person.id == result.lastrowid ).update(d2b)
             db.session.commit()
 
+            # 表1 下半部分（家庭主要成员）
+            # todo
+
             # 将工作过程写入辅助表 record_info
             record_info = Record_info()
             record_info.id_person = result.lastrowid    # 增加记录的id号
@@ -250,12 +296,16 @@ class pickup_emp():
                 db.session.add(record_info)
                 db.session.commit()
             except Exception as e:
-                logging.error('写入工作过程错误')
+                msg = '写入工作过程错误:{}'.format(e)
+                logging.error(msg)
+                print(msg)
                 db.session.rollback()
 
 
         except Exception as e:
-            logging.error('写入数据库错误:{}'.format(self.data2db))
+            msg = '写入数据库错误:{}'.format(e)
+            logging.error(msg)
+            print(msg)
             db.session.rollback()
 
 
@@ -296,14 +346,14 @@ class get_file_list():
 
 if __name__ == '__main__':
 
-    path = 'v:\\User\\人员档案资料'
-    path = r'v:\User\人员档案资料\01.机关\01.办公室（11人）'
-    f = get_file_list(path=path)
-    for i in f.file_list:
-        print(i)
+    # path = 'v:\\User\\人员档案资料'
+    # path = r'v:\User\人员档案资料\01.机关\01.办公室（11人）'
+    # f = get_file_list(path=path)
+    # for i in f.file_list:
+    #     print(i)
 
     filelist = ['emp_sample.docx','emp_xxb.docx']
-    filelist = f.file_list
+    # filelist = f.file_list
     w = pickup_emp(filelist)
 
 
