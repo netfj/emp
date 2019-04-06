@@ -97,14 +97,17 @@ class Person(db.Model):
     evaluation      = db.Column(db.String(1000))
     reason          = db.Column(db.String(200))
 
+    # 关联
+    homes = db.relationship('Home', backref='person')
+
     def __repr__(self):
         return '<Person:{}.{}>'.format(self.id,self.name)
 
 
 class Home(db.Model):
-    __tablename__ = "home"
+    __tablename__ = "homes"
     id              = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    id_person       = db.Column(db.Integer)
+    id_person       = db.Column(db.Integer,db.ForeignKey('persons.id'))
     title           = db.Column(db.String(20))
     name            = db.Column(db.String(36))
     birthday        = db.Column(db.String(36))

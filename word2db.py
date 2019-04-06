@@ -4,7 +4,7 @@
 
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-from setup_database import app, Person, Record_info
+from setup_database import app, Person, Record_info, Home
 import docx,logging,os
 
 def logset():
@@ -41,6 +41,7 @@ class pickup_emp():
         'title':'称谓','name':'姓名','birthday':'出生年月',
         'party':'政治面貌','work':'工作单位及职务'
     }
+
 
     def __init__(self,filelist=None):
         if filelist:
@@ -206,7 +207,7 @@ class pickup_emp():
                         t = cell[2].replace('\n','')
                         if t!='':lt.append(t)
                 result.update({row:lt})
-        # 去重 #TODO
+        # 去重
         tmp = {}
         for key,value in result.items():
             lt = []
@@ -251,7 +252,7 @@ class pickup_emp():
         self.data2db.update({'db_table_1a': d2b})
 
         # 处理表1下半部分（家庭主要成员）===============
-            # 直接引用清洗后的数据即可
+            # 直接引用清洗后的数据
         d2b = self.table_info_clean['db_table_1b']
         self.data2db.update({'db_table_1b':d2b})
 
@@ -262,7 +263,7 @@ class pickup_emp():
     def import_data_to_table(self):
         db = SQLAlchemy(app)
 
-        # 将表的信息写入数据库
+        # 将表的信息写入数据库 ~~~~~~~~~~~~~~~~~~
         try:
             # 表0 上半部分（简历以前）
             result = db.session.execute(Person.__table__.insert(),
@@ -277,14 +278,18 @@ class pickup_emp():
             # 表1 上半部分（奖惩、考核、任免）
             d2b = self.data2db['db_table_1a']
             db.session.query(Person).filter(Person.id == result.lastrowid ).update(d2b)
-            db.session.commit()
+            # db.session.commit()
 
             # 表1 下半部分（家庭主要成员）
-            # todo
+            d2b = self.data2db['db_table_1b']
+            for n in range(0,len(d2b)):
+                d2b[n].update({'id_person':result.lastrowid})
+            db.session.execute(Home.__table__.insert(),d2b)
+            db.session.commit()
 
-            # 将工作过程写入辅助表 record_info
+            # 将工作过程写入辅助表 record_infos ：开始~~~~~~~~~~~~~~~~~~~~~
             record_info = Record_info()
-            record_info.id_person = result.lastrowid    # 增加记录的id号
+            record_info.id_person = result.lastrowid  # 增加记录的id号
             record_info.mode = 'word'
             record_info.info = self.docx_file
             record_info.data_souce = '{}'.format(self.table_info)
@@ -300,15 +305,13 @@ class pickup_emp():
                 logging.error(msg)
                 print(msg)
                 db.session.rollback()
-
+            # 将工作过程写入辅助表 record_infos ：结束~~~~~~~~~~~~~~~~~~~~~
 
         except Exception as e:
             msg = '写入数据库错误:{}'.format(e)
             logging.error(msg)
             print(msg)
             db.session.rollback()
-
-
 
     def run(self):
         logging.info('导入文件列表:'+  ('|').join(self.filelist))
