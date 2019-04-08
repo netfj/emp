@@ -7,7 +7,6 @@ from datetime import datetime
 from setup_database import app, Person, Record_info, Home
 import docx,logging,os
 from win32com import client
-from os import path,makedirs
 from tempfile import gettempdir
 from random import randint
 from shutil import rmtree
@@ -53,15 +52,15 @@ class pickup_emp():
         if filelist:
             self.filelist = filelist    # 导入的文件列表
             self.set_tmp_path()         # 设置临时目录
+            self.run_info = {'fault':[],'sucess':[]}     # 记录处理文件成功、失败
             self.run()                  # 开始执行控制中心程序
             self.clean_tmp_path()           # 清理临时目录
 
-
     def set_tmp_path(self):
         # 设置本类的临时目录：操作系统的临时目录 + 本系统特定的目录
-        self.sys_tmp = path.join(gettempdir(), '_doc2docx')
-        if not path.exists(self.sys_tmp):  # 临时目录：如果没有，则创建
-            makedirs(self.sys_tmp)
+        self.sys_tmp = os.path.join(gettempdir(), '_doc2docx')
+        if not os.path.exists(self.sys_tmp):  # 临时目录：如果没有，则创建
+            os.makedirs(self.sys_tmp)
 
     # 内部数据初始化
     def initialize(self):
@@ -70,6 +69,22 @@ class pickup_emp():
         self.table_info_clean = {}      # 清洗处理过后的数据：可用信息
         self.data2db = {}               # 将要导入到数据表中的数据：精准信息
         # logging.debug('内部数据初始化')
+
+    def run_info_register(self,sucess=True,write_to_logfile = False):
+        if write_to_logfile:
+            msg = '【本次运行情况】总数{}，成功{}，失败{}。具体：{}'.format(len(self.filelist),
+                                                        len(self.run_info['sucess']),
+                                                        len(self.run_info['fault']),
+                                                        self.run_info)
+            logging.info(msg)
+            print(msg)
+            return True
+
+        if sucess:
+            self.run_info['sucess'].append(self.docx_file)
+        else:
+            self.run_info['fault'].append(self.docx_file)
+
 
     # 提取表的数据，保存在：self.table_items
     # 此过程没有被调用：？？？
@@ -90,7 +105,7 @@ class pickup_emp():
             logging.error(msg)
             return False
 
-        if not path.exists(path.realpath(word_file)):
+        if not os.path.exists(os.path.realpath(word_file)):
             msg = '文件不存在: ' + word_file
             print(msg)
             logging.error(msg)
@@ -99,11 +114,10 @@ class pickup_emp():
         if os.path.splitext(word_file)[1] == '.docx':
             return word_file
         else:
-            print('转换文件开始 ... ')
-            tmp_docx_name = path.join(self.sys_tmp,
-                          path.basename(word_file)+'.'+str(randint(0, 9999))+'.docx')
+            tmp_docx_name = os.path.join(self.sys_tmp,
+                          os.path.basename(word_file)+'.'+str(randint(0, 9999))+'.docx')
 
-            open_word_file = path.realpath(word_file)
+            open_word_file = os.path.realpath(word_file)
             try:  # doc ==> docx
                 word = client.Dispatch("Word.Application")
                 doc = word.Documents.Open(open_word_file)
@@ -405,18 +419,30 @@ class pickup_emp():
         logging.info('导入文件列表:'+  ('|').join(self.filelist))
         fn = len(self.filelist)
         for index,f in enumerate(self.filelist):
-            msg = '进程: {}/{} — {}'.format(index+1,fn,f)
+            msg = '【进程】{}/{} — {}'.format(index+1,fn,f)
             logging.info(msg)
             print(msg)
 
             if self.updata_word_file(f):        # 更换当前导入文件
-                self.extract_from_word()        # 提取原始数据
-                self.extract_from_word_clean()  # 清洗数据
-                self.data2db_create()           # 提取精准数据（可以插入表中）
-                self.import_data_to_table()     # 导入数据
-                logging.info(msg + ' — 完成')
+                try:
+                    self.extract_from_word()        # 提取原始数据
+                    self.extract_from_word_clean()  # 清洗数据
+                    self.data2db_create()           # 提取精准数据（可以插入表中）
+                    self.import_data_to_table()     # 导入数据
+                except Exception as e:
+                    msg_error = '提取数据失败：{}'.format(self.docx_file)
+                    print(msg_error)
+                    logging.error(msg_error)
+                    self.run_info_register(sucess=False)
+                else:
+                    self.run_info_register(sucess=True)
+                    logging.info(msg + ' — 完成')
             else:
+                self.run_info_register(sucess=False)
                 logging.info(msg + ' — 失败')
+
+        # 将运行情况写入日志记录失败
+        self.run_info_register(write_to_logfile = True)
 
 
 class get_file_list():
@@ -428,6 +454,11 @@ class get_file_list():
         self.get_file(self.path)
 
     def get_file(self, path):
+        if os.path.isfile(path):    # 如果是文件
+            if os.path.splitext(path)[1] in self.ext:
+                self.file_list.append(path)
+            return True
+
         list = os.listdir(path)
         for i in range(0,len(list)):
             file_or_dir = os.path.join(path,list[i])
@@ -440,18 +471,22 @@ class get_file_list():
 
 if __name__ == '__main__':
 
-    # path = 'v:\\User\\人员档案资料'
+    path = 'v:\\User\\人员档案资料'
+    path = r'v:\User\人员档案资料\02.直属单位'
+    path = r'v:\User\人员档案资料\02.直属单位\02.市政中心（15人）'
+    # path = r'c:\temp'
     # path = r'v:\User\人员档案资料\01.机关\01.办公室（11人）'
-    # f = get_file_list(path=path)
-    # for i in f.file_list:
-    #     print(i)
+    # path = r'v:\User\人员档案资料\02.直属单位\02.市政中心（15人）\徐珍珍.doc'
+    f = get_file_list(path=path)
+
+    lt0 = f.file_list
+
 
     lt1 = ['emp_sample.docx','emp_xxb.docx','emp_sample_word2003.doc']
     lt2 = ['emp_sample.docx','emp_xxb.docx']
-    # lt3 = f.file_list
-    w = pickup_emp(lt1)
+    lt3 = ['c:\\temp\\沈益斌.doc', 'c:\\temp\\金华峰.doc']
 
-
+    w = pickup_emp(lt0)
 
 
     import sys
