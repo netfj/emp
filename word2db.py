@@ -154,6 +154,11 @@ class pickup_emp():
             msg = '打开文件成功!'
 
         self.tables = doc.tables                # 获取文件中的表格集 句柄
+        if len(self.tables) !=2:
+            msg = '{} 表格数量：{} (规定数量=2）'.format(self.docx_file,len(self.tables))
+            print(msg)
+            logging.error(msg)
+            return False
 
         # 收集有关信息, 保存在：self.table_info['table_info']
         tb_info = {'文件名':self.docx_file}                     # 文件名
