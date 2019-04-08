@@ -96,6 +96,7 @@ class Person(db.Model):
     reward          = db.Column(db.String(1000))
     evaluation      = db.Column(db.String(1000))
     reason          = db.Column(db.String(200))
+    photo           = db.Column(db.BLOB)
 
     # 关联
     homes = db.relationship('Home', backref='person')

@@ -66,6 +66,7 @@ class pickup_emp():
     # 内部数据初始化
     def initialize(self):
         self.docx_file = ''             # 导入的 WORD 文件名：sample.docx
+        self.imgData = ''               # 保存图片的二进制数据
         self.table_info = {}            # 提取的表的初始数据：原始信息
         self.table_info_clean = {}      # 清洗处理过后的数据：可用信息
         self.data2db = {}               # 将要导入到数据表中的数据：精准信息
@@ -73,16 +74,19 @@ class pickup_emp():
 
     def run_info_register(self,sucess=True,write_to_logfile = False):
         if write_to_logfile:
+
             total_file  = len(self.filelist)
             sucess_file = len(self.run_info['sucess'])
             fault_file  = len(self.run_info['fault'])
-            msg0 = '【本次运行情况】总数{}，成功{}，失败{}'.format(total_file,
-                                                   sucess_file, fault_file)
+
+            msg0 = '【本次运行情况】总数{}：成功{}，失败{}'.format(total_file,sucess_file, fault_file)
             if fault_file>0:
                 msg1 = msg0 + '{}。'.format(self.run_info['fault'])
             else:
                 msg1 = msg0
+
             msg2 = msg0 + '。具体：{}'.format(self.run_info)
+
             print(msg1)
             logging.info(msg2)
             return True
@@ -93,18 +97,7 @@ class pickup_emp():
             self.run_info['fault'].append(self.docx_file)
 
 
-    # 提取表的数据，保存在：self.table_items
-    # 此过程没有被调用：？？？
-    # def import_data_from_word_file___will_be_delete(self):
-    #     # 本过程没有用，将要（可以）被删除
-    #     items = []
-    #     for n in range(0, len(self.tables)):
-    #         row = len(self.tables[n].rows)
-    #         col = len(self.tables[n].columns)
-    #         for r in range(0, row):
-    #             for c in range(0, col):
-    #                 t = self.tables[n].cell(row, col).text
-
+    # doc --> docx
     def get_docx_file(self,word_file=''):
         if not word_file:
             msg = '没有传递文件！'
@@ -120,11 +113,13 @@ class pickup_emp():
 
         if os.path.splitext(word_file)[1] == '.docx':
             return word_file
+
         else:
             tmp_docx_name = os.path.join(self.sys_tmp,
                           os.path.basename(word_file)+'.'+str(randint(0, 9999))+'.docx')
 
             open_word_file = os.path.realpath(word_file)
+
             try:  # doc ==> docx
                 word = client.Dispatch("Word.Application")
                 doc = word.Documents.Open(open_word_file)
@@ -150,6 +145,10 @@ class pickup_emp():
         # logging.debug('开始处理：{}'.format(self.docx_file))
 
         open_word_file = self.get_docx_file(self.docx_file)
+        if not open_word_file:      # 转换文件失败，则退出
+            self.run_info_register(sucess=False)
+            return False
+
         try:
             doc = docx.Document(open_word_file)     # 打开文件
         except Exception as e:
@@ -175,6 +174,17 @@ class pickup_emp():
             col = len(self.tables[n].columns)
             tb_info.update({'表格{}的行列数量（行，列）'.format(n):(row,col)})
         self.table_info.update(table_info = tb_info)
+
+        # 读取图片
+        for shape in doc.inline_shapes:
+            contentID = shape._inline.graphic.graphicData.pic.blipFill.blip.embed
+            contentType = doc.part.related_parts[contentID].content_type
+            if not contentType.startswith('image'):
+                continue
+            self.imgData = doc.part.related_parts[contentID]._blob
+            break
+
+
         return True     # 成功
 
 
@@ -365,24 +375,30 @@ class pickup_emp():
             # 表0 上半部分（简历以前）
             result = self.db.session.execute(Person.__table__.insert(),
                                         self.data2db['db_table_0a'])
-            # self.db.session.commit()
 
             # 表0 下半部分（简历）
             d2b = self.data2db['db_table_0b']
             self.db.session.query(Person).filter(Person.id == result.lastrowid ).update(d2b)
-            # self.db.session.commit()
 
             # 表1 上半部分（奖惩、考核、任免）
             d2b = self.data2db['db_table_1a']
             self.db.session.query(Person).filter(Person.id == result.lastrowid ).update(d2b)
-            # self.db.session.commit()
+
+            # 写入图片
+            if self.imgData != '':
+                d2b = {'photo':self.imgData}
+                self.db.session.query(Person).filter(Person.id == result.lastrowid ).update(d2b)
+
 
             # 表1 下半部分（家庭主要成员）
             d2b = self.data2db['db_table_1b']
             for n in range(0,len(d2b)):
                 d2b[n].update({'id_person':result.lastrowid})
             self.db.session.execute(Home.__table__.insert(),d2b)
+
+            # 写入
             self.db.session.commit()
+
             logging.debug('写入数据库：id:{}|word:{}'.format(result.lastrowid,self.docx_file))
 
             # 将工作过程写入辅助表 record_infos ：开始~~~~~~~~~~~~~~~~~~~~~
@@ -521,7 +537,7 @@ if __name__ == '__main__':
     lt5 = ['pb.doc']
 
 
-    w = pickup_emp(lt5+lt1)
+    w = pickup_emp(lt1)
 
 
     import sys
