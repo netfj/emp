@@ -6,6 +6,12 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from setup_database import app, Person, Record_info, Home
 import docx,logging,os
+from win32com import client
+from os import path,makedirs
+from tempfile import gettempdir
+from random import randint
+from shutil import rmtree
+from time import sleep
 
 def logset():
     filename='runinfo.log'
@@ -45,8 +51,17 @@ class pickup_emp():
 
     def __init__(self,filelist=None):
         if filelist:
-            self.filelist = filelist
-            self.run()
+            self.filelist = filelist    # 导入的文件列表
+            self.set_tmp_path()         # 设置临时目录
+            self.run()                  # 开始执行控制中心程序
+            self.clean_tmp_path()           # 清理临时目录
+
+
+    def set_tmp_path(self):
+        # 设置本类的临时目录：操作系统的临时目录 + 本系统特定的目录
+        self.sys_tmp = path.join(gettempdir(), '_doc2docx')
+        if not path.exists(self.sys_tmp):  # 临时目录：如果没有，则创建
+            makedirs(self.sys_tmp)
 
     # 内部数据初始化
     def initialize(self):
@@ -54,23 +69,76 @@ class pickup_emp():
         self.table_info = {}            # 提取的表的初始数据：原始信息
         self.table_info_clean = {}      # 清洗处理过后的数据：可用信息
         self.data2db = {}               # 将要导入到数据表中的数据：精准信息
-        logging.debug('内部数据初始化')
+        # logging.debug('内部数据初始化')
 
     # 提取表的数据，保存在：self.table_items
-    def import_data_from_word_file(self):
-        items = []
-        for n in range(0, len(self.tables)):
-            row = len(self.tables[n].rows)
-            col = len(self.tables[n].columns)
-            for r in range(0, row):
-                for c in range(0, col):
-                    t = self.tables[n].cell(row, col).text
+    # 此过程没有被调用：？？？
+    # def import_data_from_word_file___will_be_delete(self):
+    #     # 本过程没有用，将要（可以）被删除
+    #     items = []
+    #     for n in range(0, len(self.tables)):
+    #         row = len(self.tables[n].rows)
+    #         col = len(self.tables[n].columns)
+    #         for r in range(0, row):
+    #             for c in range(0, col):
+    #                 t = self.tables[n].cell(row, col).text
+
+    def get_docx_file(self,word_file=''):
+        if not word_file:
+            msg = '没有传递文件！'
+            print(msg)
+            logging.error(msg)
+            return False
+
+        if not path.exists(path.realpath(word_file)):
+            msg = '文件不存在: ' + word_file
+            print(msg)
+            logging.error(msg)
+            return False
+
+        if os.path.splitext(word_file)[1] == '.docx':
+            return word_file
+        else:
+            print('转换文件开始 ... ')
+            tmp_docx_name = path.join(self.sys_tmp,
+                          path.basename(word_file)+'.'+str(randint(0, 9999))+'.docx')
+
+            open_word_file = path.realpath(word_file)
+            try:  # doc ==> docx
+                word = client.Dispatch("Word.Application")
+                doc = word.Documents.Open(open_word_file)
+                doc.SaveAs(tmp_docx_name, 16)
+                doc.Close()
+                word.Quit()
+            except Exception as e:
+                msg = '转换失败：{}'.format(e)
+                print(msg)
+                logging.error(msg)
+                return False
+            else:
+                msg = '转换成功: {}'.format(tmp_docx_name)
+                # print(msg)
+                return tmp_docx_name
+
+
 
     # 更换文件
     def updata_word_file(self, docx_file):
         self.initialize()                       # 将内部数据初始化
         self.docx_file = docx_file              # 更换文件名
-        doc = docx.Document(self.docx_file)     # 打开文件
+        # logging.debug('开始处理：{}'.format(self.docx_file))
+
+        open_word_file = self.get_docx_file(self.docx_file)
+        try:
+            doc = docx.Document(open_word_file)     # 打开文件
+        except Exception as e:
+            msg = '打开文件({})错误：{}'.format(open_word_file,e)
+            print(msg)
+            logging.error(msg)
+            return False
+        else:
+            msg = '打开文件成功!'
+
         self.tables = doc.tables                # 获取文件中的表格集 句柄
 
         # 收集有关信息, 保存在：self.table_info['table_info']
@@ -81,7 +149,10 @@ class pickup_emp():
             col = len(self.tables[n].columns)
             tb_info.update({'表格{}的行列数量（行，列）'.format(n):(row,col)})
         self.table_info.update(table_info = tb_info)
+        return True     # 成功
 
+
+    # --------------------------------------------------------------------------
     # 提取表的原始数据，以 列表 形式，保存在-->字典：self.table_info['items_text']
     ''' 数据结构：列表，每项的含义{表的序号: [(行号，列号，内容TEXT), ...] 
     实例：{0: [(0, 0, '姓\u3000名'), (0, 1, '姓\u3000名'), 
@@ -99,7 +170,7 @@ class pickup_emp():
                     x.append((r,c,t))
             d.update({n:x})
         self.table_info.update({'items_text':d})
-        logging.debug(self.table_info)  # 写入日志
+        logging.debug('原始信息：{}'.format(self.table_info))  # 写入日志
 
     # 清洗数据  ： 1.有效取值，2.视情况，去空格、头尾换行符
     # 保存至字典： self.table_info_clean
@@ -160,7 +231,7 @@ class pickup_emp():
         self.table_info_clean.update({'db_table_1b': data_1b})
 
         # 将清洗后的数据，保存到日志 =================================
-        logging.debug(self.table_info_clean)
+        logging.debug('有用信息：{}'.format(self.table_info_clean))
 
 
     def get_line(self, table_number = 0, key='项目名称'):
@@ -258,7 +329,7 @@ class pickup_emp():
 
 
         # 写入日志 ==================================
-        logging.debug(self.data2db)
+        logging.debug('精确信息：{}'.format(self.data2db))
 
     def import_data_to_table(self):
         db = SQLAlchemy(app)
@@ -286,6 +357,7 @@ class pickup_emp():
                 d2b[n].update({'id_person':result.lastrowid})
             db.session.execute(Home.__table__.insert(),d2b)
             db.session.commit()
+            logging.debug('写入数据库：id:{}|word:{}'.format(result.lastrowid,self.docx_file))
 
             # 将工作过程写入辅助表 record_infos ：开始~~~~~~~~~~~~~~~~~~~~~
             record_info = Record_info()
@@ -313,6 +385,22 @@ class pickup_emp():
             print(msg)
             db.session.rollback()
 
+    def clean_tmp_path(self):
+        # 清理文件: 删除临时目录
+        n = 1
+        while True:
+            try:
+                rmtree(self.sys_tmp)
+                return True
+                break
+            except Exception as e:
+                msg = '清理临时目录({})操作失败：{}'.format(self.sys_tmp,e)
+                sleep(1)
+                if n > 10: break  # 偿试 n 次
+                logging.error(msg)
+                return False
+            n += 1
+
     def run(self):
         logging.info('导入文件列表:'+  ('|').join(self.filelist))
         fn = len(self.filelist)
@@ -320,13 +408,16 @@ class pickup_emp():
             msg = '进程: {}/{} — {}'.format(index+1,fn,f)
             logging.info(msg)
             print(msg)
-            self.updata_word_file(f)        # 更换当前导入文件
-            self.extract_from_word()        # 提取原始数据
-            self.extract_from_word_clean()  # 清洗数据
-            self.data2db_create()           # 提取精准数据（可以插入表中）
-            self.import_data_to_table()     # 导入数据
 
-            logging.info(msg + ' — 完成')
+            if self.updata_word_file(f):        # 更换当前导入文件
+                self.extract_from_word()        # 提取原始数据
+                self.extract_from_word_clean()  # 清洗数据
+                self.data2db_create()           # 提取精准数据（可以插入表中）
+                self.import_data_to_table()     # 导入数据
+                logging.info(msg + ' — 完成')
+            else:
+                logging.info(msg + ' — 失败')
+
 
 class get_file_list():
     def __init__(self, path = '', ext=['.docx','.doc']):
@@ -355,9 +446,10 @@ if __name__ == '__main__':
     # for i in f.file_list:
     #     print(i)
 
-    filelist = ['emp_sample.docx','emp_xxb.docx']
-    # filelist = f.file_list
-    w = pickup_emp(filelist)
+    lt1 = ['emp_sample.docx','emp_xxb.docx','emp_sample_word2003.doc']
+    lt2 = ['emp_sample.docx','emp_xxb.docx']
+    # lt3 = f.file_list
+    w = pickup_emp(lt1)
 
 
 
