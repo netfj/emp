@@ -53,6 +53,7 @@ class pickup_emp():
             self.filelist = filelist    # 导入的文件列表
             self.set_tmp_path()         # 设置临时目录
             self.run_info = {'fault':[],'sucess':[]}     # 记录处理文件成功、失败
+            self.db = SQLAlchemy(app)
             self.run()                  # 开始执行控制中心程序
             self.clean_tmp_path()           # 清理临时目录
 
@@ -351,31 +352,31 @@ class pickup_emp():
         logging.debug('精确信息：{}'.format(self.data2db))
 
     def import_data_to_table(self):
-        db = SQLAlchemy(app)
+        # db = SQLAlchemy(app)
 
         # 将表的信息写入数据库 ~~~~~~~~~~~~~~~~~~
         try:
             # 表0 上半部分（简历以前）
-            result = db.session.execute(Person.__table__.insert(),
+            result = self.db.session.execute(Person.__table__.insert(),
                                         self.data2db['db_table_0a'])
-            # db.session.commit()
+            # self.db.session.commit()
 
             # 表0 下半部分（简历）
             d2b = self.data2db['db_table_0b']
-            db.session.query(Person).filter(Person.id == result.lastrowid ).update(d2b)
-            # db.session.commit()
+            self.db.session.query(Person).filter(Person.id == result.lastrowid ).update(d2b)
+            # self.db.session.commit()
 
             # 表1 上半部分（奖惩、考核、任免）
             d2b = self.data2db['db_table_1a']
-            db.session.query(Person).filter(Person.id == result.lastrowid ).update(d2b)
-            # db.session.commit()
+            self.db.session.query(Person).filter(Person.id == result.lastrowid ).update(d2b)
+            # self.db.session.commit()
 
             # 表1 下半部分（家庭主要成员）
             d2b = self.data2db['db_table_1b']
             for n in range(0,len(d2b)):
                 d2b[n].update({'id_person':result.lastrowid})
-            db.session.execute(Home.__table__.insert(),d2b)
-            db.session.commit()
+            self.db.session.execute(Home.__table__.insert(),d2b)
+            self.db.session.commit()
             logging.debug('写入数据库：id:{}|word:{}'.format(result.lastrowid,self.docx_file))
 
             # 将工作过程写入辅助表 record_infos ：开始~~~~~~~~~~~~~~~~~~~~~
@@ -389,20 +390,25 @@ class pickup_emp():
             record_info.dt = datetime.today()
 
             try:
-                db.session.add(record_info)
-                db.session.commit()
+                self.db.session.add(record_info)
+                self.db.session.commit()
+
+
             except Exception as e:
                 msg = '写入工作过程错误:{}'.format(e)
                 logging.error(msg)
                 print(msg)
-                db.session.rollback()
+                self.db.session.rollback()
             # 将工作过程写入辅助表 record_infos ：结束~~~~~~~~~~~~~~~~~~~~~
+
 
         except Exception as e:
             msg = '写入数据库错误:{}'.format(e)
             logging.error(msg)
             print(msg)
-            db.session.rollback()
+            self.db.session.rollback()
+
+
 
     def clean_tmp_path(self):
         # 清理文件: 删除临时目录
@@ -446,6 +452,8 @@ class pickup_emp():
                 self.run_info_register(sucess=False)
                 logging.info(msg + ' — 失败')
 
+
+
         # 将运行情况写入日志记录失败
         self.run_info_register(write_to_logfile = True)
 
@@ -468,7 +476,7 @@ class get_file_list():
         for i in range(0,len(list)):
             file_or_dir = os.path.join(path,list[i])
             if os.path.isfile(file_or_dir):
-                if os.path.splitext(file_or_dir)[1] in self.ext:
+                if os.path.splitext(file_or_dir)[1] in self.ext and '~$' not in file_or_dir:
                     self.file_list.append(file_or_dir)
             else:
                 self.get_file(file_or_dir)
@@ -477,21 +485,23 @@ class get_file_list():
 if __name__ == '__main__':
 
     path = 'v:\\User\\人员档案资料'
-    path = r'v:\User\人员档案资料\02.直属单位'
-    path = r'v:\User\人员档案资料\02.直属单位\02.市政中心（15人）'
+    # path = r'v:\User\人员档案资料\02.直属单位'
+    # path = r'v:\User\人员档案资料\02.直属单位\02.市政中心（15人）'
     # path = r'c:\temp'
     # path = r'v:\User\人员档案资料\01.机关\01.办公室（11人）'
     # path = r'v:\User\人员档案资料\02.直属单位\02.市政中心（15人）\徐珍珍.doc'
-    f = get_file_list(path=path)
 
+    f = get_file_list(path=path)
     lt0 = f.file_list
 
 
     lt1 = ['emp_sample.docx','emp_xxb.docx','emp_sample_word2003.doc']
     lt2 = ['emp_sample.docx','emp_xxb.docx']
     lt3 = ['c:\\temp\\沈益斌.doc', 'c:\\temp\\金华峰.doc']
+    lt5 = ['v:\\User\\人员档案资料\\11.中队\\15.仁和中队（7人）\\泮斌.doc']
 
-    w = pickup_emp(lt0)
+
+    w = pickup_emp(lt5)
 
 
     import sys
