@@ -73,12 +73,18 @@ class pickup_emp():
 
     def run_info_register(self,sucess=True,write_to_logfile = False):
         if write_to_logfile:
-            msg = '【本次运行情况】总数{}，成功{}，失败{}。具体：{}'.format(len(self.filelist),
-                                                        len(self.run_info['sucess']),
-                                                        len(self.run_info['fault']),
-                                                        self.run_info)
-            logging.info(msg)
-            print(msg)
+            total_file  = len(self.filelist)
+            sucess_file = len(self.run_info['sucess'])
+            fault_file  = len(self.run_info['fault'])
+            msg0 = '【本次运行情况】总数{}，成功{}，失败{}'.format(total_file,
+                                                   sucess_file, fault_file)
+            if fault_file>0:
+                msg1 = msg0 + '{}。'.format(self.run_info['fault'])
+            else:
+                msg1 = msg0
+            msg2 = msg0 + '。具体：{}'.format(self.run_info)
+            print(msg1)
+            logging.info(msg2)
             return True
 
         if sucess:
@@ -388,18 +394,17 @@ class pickup_emp():
             record_info.data_clean = '{}'.format(self.table_info_clean)
             record_info.data2db = '{}'.format(self.data2db)
             record_info.dt = datetime.today()
-
             try:
                 self.db.session.add(record_info)
                 self.db.session.commit()
-
-
             except Exception as e:
-                msg = '写入工作过程错误:{}'.format(e)
+                msg = '写入工作过程错误:{} (数据表写入正常)'.format(e)
                 logging.error(msg)
                 print(msg)
                 self.db.session.rollback()
             # 将工作过程写入辅助表 record_infos ：结束~~~~~~~~~~~~~~~~~~~~~
+
+            return True
 
 
         except Exception as e:
@@ -407,6 +412,8 @@ class pickup_emp():
             logging.error(msg)
             print(msg)
             self.db.session.rollback()
+
+            return False
 
 
 
@@ -434,27 +441,40 @@ class pickup_emp():
             logging.info(msg)
             print(msg)
 
-            if self.updata_word_file(f):        # 更换当前导入文件
-                try:
-                    self.extract_from_word()        # 提取原始数据
-                    self.extract_from_word_clean()  # 清洗数据
-                    self.data2db_create()           # 提取精准数据（可以插入表中）
-                    self.import_data_to_table()     # 导入数据
-                except Exception as e:
-                    msg_error = '提取数据失败：{}'.format(self.docx_file)
-                    print(msg_error)
-                    logging.error(msg_error)
-                    self.run_info_register(sucess=False)
-                else:
-                    self.run_info_register(sucess=True)
-                    logging.info(msg + ' — 完成')
-            else:
+            if not self.updata_word_file(f):        # 更换当前导入文件
+                msg = '读取文件失败：{}'.format(self.docx_file)
+                print(msg)
+                logging.warning(msg)
                 self.run_info_register(sucess=False)
-                logging.info(msg + ' — 失败')
+                continue
+
+            try:
+                self.extract_from_word()        # 提取原始数据
+                self.extract_from_word_clean()  # 清洗数据
+                self.data2db_create()           # 提取精准数据（可以插入表中）
+            except Exception as e:
+                msg_warning = '提取数据失败：{}'.format(self.docx_file)
+                print(msg_warning)
+                logging.warning(msg_warning)
+                self.run_info_register(sucess=False)
+                continue
+            else:
+                pass
+
+            run_result = self.import_data_to_table()     # 写入数据库
+            if run_result != True:
+                msg_warning = '写入数据库失败：{}'.format(self.docx_file)
+                print(msg_warning)
+                logging.warning(msg_warning)
+                self.run_info_register(sucess=False)
+                continue
+
+            self.run_info_register(sucess=True)
+            logging.info(msg + ' — 完成')
 
 
 
-        # 将运行情况写入日志记录失败
+        # 控制中心最后的工作：将运行情况写入日志
         self.run_info_register(write_to_logfile = True)
 
 
@@ -491,17 +511,17 @@ if __name__ == '__main__':
     # path = r'v:\User\人员档案资料\01.机关\01.办公室（11人）'
     # path = r'v:\User\人员档案资料\02.直属单位\02.市政中心（15人）\徐珍珍.doc'
 
-    f = get_file_list(path=path)
-    lt0 = f.file_list
+    # f = get_file_list(path=path)
+    # lt0 = f.file_list
 
 
     lt1 = ['emp_sample.docx','emp_xxb.docx','emp_sample_word2003.doc']
     lt2 = ['emp_sample.docx','emp_xxb.docx']
-    lt3 = ['c:\\temp\\沈益斌.doc', 'c:\\temp\\金华峰.doc']
-    lt5 = ['v:\\User\\人员档案资料\\11.中队\\15.仁和中队（7人）\\泮斌.doc']
+
+    lt5 = ['pb.doc']
 
 
-    w = pickup_emp(lt5)
+    w = pickup_emp(lt5+lt1)
 
 
     import sys

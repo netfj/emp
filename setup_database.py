@@ -8,7 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 # 初始化：创建数据库
 def create_data(database_name = None):
-    engine = create_engine('mysql+mysqldb://root:pass@localhost',
+    engine = create_engine('mysql+mysqldb://root:root@localhost',
                            encoding = "utf-8", echo = True, max_overflow = 5)
     #创建数据库
     cur = engine.execute('show databases')
@@ -26,7 +26,7 @@ def create_data(database_name = None):
 # 建立表的模型
 app = Flask(__name__)
 # 数据库引擎
-app.config["SQLALCHEMY_DATABASE_URI"]='mysql://root:pass@localhost/employee'
+app.config["SQLALCHEMY_DATABASE_URI"]='mysql://root:root@localhost/employee'
 
 # 请求结束后自动commit(但操作数据库除外，需要 commit)
 app.config["SQLALCHEMY_COMMIT_ON_TEARDOWN"] = True
