@@ -521,7 +521,7 @@ if __name__ == '__main__':
     lt5 = ['pb.doc']
 
 
-    w = pickup_emp(lt5+lt1)
+    w = pickup_emp(lt5+lt1+lt2)
 
 
     import sys
