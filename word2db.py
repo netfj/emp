@@ -142,12 +142,15 @@ class pickup_emp():
                 # print(msg)
 
                 # 将图片写入 self.imgData 以备使用
-                list = os.listdir(tmp_docx_name+'.files')
-                if len(list)>0:
-                    img_file = os.path.join(tmp_docx_name+'.files',list[0])
-                    fp = open(img_file,'rb')
-                    self.imgData = fp.read()
-                    fp.close()
+                dir = tmp_docx_name+'.files'
+                if os.path.isdir(dir):
+                    list = os.listdir(dir)
+                    if len(list)>0:
+                        img_file = os.path.join(dir,list[0])
+                        if os.path.isfile(img_file):
+                            fp = open(img_file,'rb')
+                            self.imgData = fp.read()
+                            fp.close()
 
                 return tmp_docx_name
 
@@ -534,6 +537,7 @@ class get_file_list():
 
 
 if __name__ == '__main__':
+
 
     path = 'v:\\User\\人员档案资料'
     # path = r'v:\User\人员档案资料\02.直属单位'
