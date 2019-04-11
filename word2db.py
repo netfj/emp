@@ -2,10 +2,10 @@
 # @Info: 从人事档案表中提取数据
 # @Author:Netfj@sina.com @File:word2db.py @Time:2019/3/30 6:50
 
+import docx,logging,os,re
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from setup_database import app, Person, Record_info, Home
-import docx,logging,os
 from win32com import client
 from tempfile import gettempdir
 from random import randint
@@ -52,6 +52,7 @@ class pickup_emp():
         if filelist:
             self.filelist = filelist    # 导入的文件列表
             self.set_tmp_path()         # 设置临时目录
+            self.dwdm = {}              # 单位代码
             self.run_info = {'fault':[],'sucess':[]}     # 记录处理文件成功、失败
 
             self.db = SQLAlchemy(app)       # 新建一个实例
@@ -205,6 +206,20 @@ class pickup_emp():
 
         return True     # 成功
 
+
+    # 更新部门、科室（中队）代码
+    def update_dwdm(self):
+        file = re.sub('（[0-9]*人）','',self.docx_file)    #去掉（99人）的字样
+        path2 = os.path.dirname(file)
+        path1 = os.path.dirname(path2)
+        p2 = path1[path1.rfind('\\') + 1:]
+        p1 = path2[path2.rfind('\\') + 1:]
+        dm_bm = p1[0:2]
+        dm_ks = dm_bm + p2[0:2]
+        mc_bm = p1[p1.find('.') + 1:]
+        mc_ks = p2[p2.find('.') + 1:]
+        self.dwdm.update({dm_bm:mc_bm})
+        self.dwdm.update({dm_ks:mc_ks})
 
     # --------------------------------------------------------------------------
     # 提取表的原始数据，以 列表 形式，保存在-->字典：self.table_info['items_text']
@@ -483,6 +498,7 @@ class pickup_emp():
                 continue
 
             try:
+                self.update_dwdm()              # 更新单位代码库
                 self.extract_from_word()        # 提取原始数据
                 self.extract_from_word_clean()  # 清洗数据
                 self.data2db_create()           # 提取精准数据（可以插入表中）
@@ -517,7 +533,6 @@ class get_file_list():
         self.path = path
         self.ext = ext
         self.file_list = []
-
         self.get_file(self.path)
 
     def get_file(self, path):
@@ -535,9 +550,20 @@ class get_file_list():
             else:
                 self.get_file(file_or_dir)
 
+class get_dir_list():
+    def __init__(self, path = ''):
+        self.path = path
+        self.dir_list = []
+        self.get_dir(self.path)
+
+    def get_dir(self, path):
+        if os.path.isdir(path):    # 如果是文件夹
+            self.dir_list.append(path)
+            list = os.listdir(path)
+            for i in list:
+                self.get_dir(os.path.join(path,i))
 
 if __name__ == '__main__':
-
 
     path = 'v:\\User\\人员档案资料'
     # path = r'v:\User\人员档案资料\02.直属单位'
@@ -545,19 +571,17 @@ if __name__ == '__main__':
     # path = r'c:\temp'
     # path = r'v:\User\人员档案资料\01.机关\01.办公室（11人）'
     # path = r'v:\User\人员档案资料\02.直属单位\02.市政中心（15人）\徐珍珍.doc'
-
-    # f = get_file_list(path=path)
-    # lt0 = f.file_list
-
+    path = r'c:\TEMP\tmp2'
+    f = get_file_list(path=path)
+    lt0 = f.file_list
 
     lt1 = ['emp_sample.docx','emp_xxb.docx']
     lt2 = ['emp_sample_word2003.doc','emp_sample_word2003_gif.doc','emp_sample_word2003_png.doc']
-
     lt5 = ['pb.doc']
 
 
-    w = pickup_emp(lt2)
-
+    w = pickup_emp(lt0)
+    print(w.dwdm)   # todo: 将单位代码写入库，当然先建库
 
     import sys
     sys.exit()
