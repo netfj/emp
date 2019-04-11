@@ -121,14 +121,15 @@ class pickup_emp():
 
         else:
             tmp_docx_name = os.path.join(self.sys_tmp,
-                          os.path.basename(word_file)+'.'+str(randint(0, 9999))+'.docx')
+                          os.path.basename(word_file)+'.'+str(randint(0, 99999))+'.docx')
 
             open_word_file = os.path.realpath(word_file)
 
             try:  # doc ==> docx
                 # word = client.Dispatch("Word.Application")
                 doc = self.word.Documents.Open(open_word_file)
-                doc.SaveAs(tmp_docx_name, 16)
+                doc.SaveAs(tmp_docx_name, 16)   #保存为docx
+                doc.SaveAs(tmp_docx_name+'.html', 10)   #保存为html
                 doc.Close()
                 # word.Quit()
             except Exception as e:
@@ -139,6 +140,15 @@ class pickup_emp():
             else:
                 msg = '转换成功: {}'.format(tmp_docx_name)
                 # print(msg)
+
+                # 将图片写入 self.imgData 以备使用
+                list = os.listdir(tmp_docx_name+'.files')
+                if len(list)>0:
+                    img_file = os.path.join(tmp_docx_name+'.files',list[0])
+                    fp = open(img_file,'rb')
+                    self.imgData = fp.read()
+                    fp.close()
+
                 return tmp_docx_name
 
 
@@ -536,13 +546,13 @@ if __name__ == '__main__':
     # lt0 = f.file_list
 
 
-    lt1 = ['emp_sample.docx','emp_xxb.docx','emp_sample_word2003.doc']
-    lt2 = ['emp_sample.docx','emp_xxb.docx']
+    lt1 = ['emp_sample.docx','emp_xxb.docx']
+    lt2 = ['emp_sample_word2003.doc','emp_sample_word2003_gif.doc','emp_sample_word2003_png.doc']
 
     lt5 = ['pb.doc']
 
 
-    w = pickup_emp(lt1)
+    w = pickup_emp(lt2)
 
 
     import sys
