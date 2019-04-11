@@ -53,9 +53,14 @@ class pickup_emp():
             self.filelist = filelist    # 导入的文件列表
             self.set_tmp_path()         # 设置临时目录
             self.run_info = {'fault':[],'sucess':[]}     # 记录处理文件成功、失败
-            self.db = SQLAlchemy(app)
+
+            self.db = SQLAlchemy(app)       # 新建一个实例
+            self.word = client.Dispatch("Word.Application") # 启动word进程
+
             self.run()                  # 开始执行控制中心程序
+
             self.clean_tmp_path()           # 清理临时目录
+            self.word.Quit()        # 退出 word
 
     def set_tmp_path(self):
         # 设置本类的临时目录：操作系统的临时目录 + 本系统特定的目录
@@ -121,11 +126,11 @@ class pickup_emp():
             open_word_file = os.path.realpath(word_file)
 
             try:  # doc ==> docx
-                word = client.Dispatch("Word.Application")
-                doc = word.Documents.Open(open_word_file)
+                # word = client.Dispatch("Word.Application")
+                doc = self.word.Documents.Open(open_word_file)
                 doc.SaveAs(tmp_docx_name, 16)
                 doc.Close()
-                word.Quit()
+                # word.Quit()
             except Exception as e:
                 msg = '转换失败：{}'.format(e)
                 print(msg)
