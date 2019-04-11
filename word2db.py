@@ -449,7 +449,7 @@ class pickup_emp():
 
 
     def clean_tmp_path(self):
-        # 清理文件: 删除临时目录
+        # 清理文件:删除临时目录
         n = 1
         while True:
             try:
