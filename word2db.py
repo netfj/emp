@@ -234,7 +234,7 @@ class pickup_emp():
                     for i in self.dwdm
                     if i[0] not in dwdms_exist]
 
-        # 将需要补充的 dwdm_new 写入数据库
+        # 将需要补充的 dwdm_new  写入数据库
         if len(dwdm_new)==0: return True
         logging.info('新增单位代码库：{}'.format(dwdm_new))
         try:
