@@ -50,20 +50,19 @@ class pickup_emp():
 
     def __init__(self,filelist=None):
         if filelist:
-            self.filelist = filelist    # 导入的文件列表
-            self.set_tmp_path()         # 设置临时目录
-            self.dwdm = {}              # 单位代码
+            self.filelist = filelist        # 导入的文件列表
+            self.set_tmp_path()             # 设置临时目录
+            self.dwdm = []                  # 单位代码
             self.run_info = {'fault':[],'sucess':[]}     # 记录处理文件成功、失败
 
             self.db = SQLAlchemy(app)       # 新建一个实例
             self.word = client.Dispatch("Word.Application") # 启动word进程
 
-            self.run()                  # 开始执行控制中心程序
+            self.run()                      # 开始执行控制中心程序
 
-            self.update_db_dwdms()      # 将单位代码写入单位代码库
-
+            self.word.Quit()                # 退出 word
+            self.db.close_all_sessions      # 关闭数据库连接
             self.clean_tmp_path()           # 清理临时目录
-            self.word.Quit()        # 退出 word
 
     def set_tmp_path(self):
         # 设置本类的临时目录：操作系统的临时目录 + 本系统特定的目录
@@ -220,35 +219,34 @@ class pickup_emp():
         dm_ks = dm_bm + p2[0:2]
         mc_bm = p1[p1.find('.') + 1:]
         mc_ks = p2[p2.find('.') + 1:]
-        self.dwdm.update({dm_bm:mc_bm})
-        self.dwdm.update({dm_ks:mc_ks})
+        self.dwdm.append((dm_bm,mc_bm))
+        self.dwdm.append((dm_ks,mc_ks))
+
 
     # 将单位代码库 self.dwdm 写数数据库 employee.dwdms
     def update_db_dwdms(self):
         # 提取单位代码库中已经有的项目，防止重复冲突
         dwdms = Dwdm.query.all()
-        dwdms_exist = []
-        for i in dwdms:
-            dwdms_exist.append(i.dm)
-        print(dwdms_exist)
+        dwdms_exist = [i.dm for i in dwdms]
 
         # 本次运行生成的，将要输入的库，先进行比较
-        dwdm_new = {}
-        for i in self.dwdm.keys():
-            i = i.strip()
-            if i not in dwdms_exist:
-                dwdm_new.update({i:self.dwdm[i]})
-        print(dwdm_new)
+        dwdm_new = [i
+                    for i in self.dwdm
+                    if i[0] not in dwdms_exist]
 
         # 将需要补充的 dwdm_new 写入数据库
-        # todo
-        logging.debug('新增单位代码库：{}'.format(dwdm_new))
+        if len(dwdm_new)==0: return True
+        logging.info('新增单位代码库：{}'.format(dwdm_new))
         try:
-            self.db.session.execute(Dwdm.__table__.insert(),dwdm_new)
+            # self.db.session.execute(Dwdm.__table__.insert(),dwdm_new)
+            add_values = '{}'.format(dwdm_new)[1:-1]    #列表转换为字符，并且去掉首尾的 []
+            sql = "insert into dwdms(dm,mc) values {}".format(add_values)
+            self.db.session.execute(sql)
             self.db.session.commit()
         except Exception as e:
-            print(e)
-            logging.error(e)
+            msg = '写入单位代码失败：{}'.format(e)
+            print(msg)
+            logging.error(msg)
         else:
             pass
 
@@ -553,7 +551,7 @@ class pickup_emp():
             self.run_info_register(sucess=True)
             logging.info(msg + ' — 完成')
 
-
+        self.update_db_dwdms()  # 将单位代码写入单位代码库
 
         # 控制中心最后的工作：将运行情况写入日志
         self.run_info_register(write_to_logfile = True)
@@ -612,7 +610,6 @@ if __name__ == '__main__':
 
 
     w = pickup_emp(lt0)
-    print(w.dwdm)   # todo: 将单位代码写入库，当然先建库
 
     import sys
     sys.exit()
