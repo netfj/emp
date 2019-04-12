@@ -66,6 +66,14 @@ db_table_1b = {
 '''
 
 # 定义表的模型
+class Dwdm(db.Model):
+    __tablename__   = 'dwdms'
+    id              = db.Column(db.Integer,primary_key=True,autoincrement=True)
+    dm              = db.Column(db.String(10))
+    mc              = db.Column(db.String(60))
+    def __repr__(self):
+        return '<Dwdm:{}.{}>'.format(self.dm,self.mc)
+
 class Person(db.Model):
     __tablename__ = "persons"
     id              = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -104,9 +112,8 @@ class Person(db.Model):
     def __repr__(self):
         return '<Person:{}.{}>'.format(self.id,self.name)
 
-
 class Home(db.Model):
-    __tablename__ = "homes"
+    __tablename__   = "homes"
     id              = db.Column(db.Integer, primary_key=True, autoincrement=True)
     id_person       = db.Column(db.Integer,db.ForeignKey('persons.id'))
     title           = db.Column(db.String(20))

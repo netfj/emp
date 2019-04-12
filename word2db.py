@@ -5,7 +5,7 @@
 import docx,logging,os,re
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-from setup_database import app, Person, Record_info, Home
+from setup_database import app, Person, Record_info, Home, Dwdm
 from win32com import client
 from tempfile import gettempdir
 from random import randint
@@ -59,6 +59,8 @@ class pickup_emp():
             self.word = client.Dispatch("Word.Application") # 启动word进程
 
             self.run()                  # 开始执行控制中心程序
+
+            self.update_db_dwdms()      # 将单位代码写入单位代码库
 
             self.clean_tmp_path()           # 清理临时目录
             self.word.Quit()        # 退出 word
@@ -207,7 +209,7 @@ class pickup_emp():
         return True     # 成功
 
 
-    # 更新部门、科室（中队）代码
+    # 更新单位页码库（部门、科室中队）代码
     def update_dwdm(self):
         file = re.sub('（[0-9]*人）','',self.docx_file)    #去掉（99人）的字样
         path2 = os.path.dirname(file)
@@ -220,6 +222,35 @@ class pickup_emp():
         mc_ks = p2[p2.find('.') + 1:]
         self.dwdm.update({dm_bm:mc_bm})
         self.dwdm.update({dm_ks:mc_ks})
+
+    # 将单位代码库 self.dwdm 写数数据库 employee.dwdms
+    def update_db_dwdms(self):
+        # 提取单位代码库中已经有的项目，防止重复冲突
+        dwdms = Dwdm.query.all()
+        dwdms_exist = []
+        for i in dwdms:
+            dwdms_exist.append(i.dm)
+        print(dwdms_exist)
+
+        # 本次运行生成的，将要输入的库，先进行比较
+        dwdm_new = {}
+        for i in self.dwdm.keys():
+            i = i.strip()
+            if i not in dwdms_exist:
+                dwdm_new.update({i:self.dwdm[i]})
+        print(dwdm_new)
+
+        # 将需要补充的 dwdm_new 写入数据库
+        # todo
+        logging.debug('新增单位代码库：{}'.format(dwdm_new))
+        try:
+            self.db.session.execute(Dwdm.__table__.insert(),dwdm_new)
+            self.db.session.commit()
+        except Exception as e:
+            print(e)
+            logging.error(e)
+        else:
+            pass
 
     # --------------------------------------------------------------------------
     # 提取表的原始数据，以 列表 形式，保存在-->字典：self.table_info['items_text']
