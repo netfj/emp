@@ -220,13 +220,10 @@ class pickup_emp():
         ksdm = bmdm + path2[m+1: m+3]       # 科室代码
         ksmc = path2[path2.rfind('.')+1:]   # 科室名称
 
-        # bmdm = re.sub('\D', '', bmdm)
-        # if len(bmdm)<2:
-        #     bmdm = '99'
-        #     bmmc = '其他'
-
+        bmdm = re.sub('\D', '', bmdm)
         ksdm = re.sub('\D','',ksdm)
-        if len(ksdm)<2:
+
+        if len(ksdm)<=2:
             bmdm = '99'
             bmmc = '其他'
             ksdm = '9999'
@@ -235,18 +232,18 @@ class pickup_emp():
         if (bmdm,bmmc) not in self.dwdm: self.dwdm.append((bmdm,bmmc))
         if (ksdm,ksmc) not in self.dwdm: self.dwdm.append((ksdm,ksmc))
 
+        self.data2db.update({'dwdm': {'id_dwdm': ksdm}})   # todo
+
     # 将单位代码库 self.dwdm 写数数据库 employee.dwdms
     def update_db_dwdms(self):
         # 提取单位代码库中已经有的项目，防止重复冲突
         dwdms = Dwdm.query.all()
         dwdms_exist = [i.dm for i in dwdms]
-        print('\n dwdms_exist:',dwdms_exist)
 
         # 本次运行生成的，将要输入的库，先进行比较
         print('self.dwdm: ',self.dwdm)
         dwdm_new = []
         [dwdm_new.append(i) for i in self.dwdm if not i[0] in dwdms_exist ]    # 去重
-        print('\n dwdm_new: ',dwdm_new)
 
         # 将需要补充的 dwdm_new 写入数据库
         if len(dwdm_new)==0: return True
@@ -471,6 +468,10 @@ class pickup_emp():
                 d2b[n].update({'id_person':result.lastrowid})
             self.db.session.execute(Home.__table__.insert(),d2b)
 
+            # 写入单位代码 #todo 2
+            d2b = self.data2db['dwdm']
+            self.db.session.query(Person).filter(Person.id == result.lastrowid).update(d2b)
+
             # 写入
             self.db.session.commit()
 
@@ -536,7 +537,7 @@ class pickup_emp():
                 msg = '读取文件失败：{}'.format(self.docx_file)
                 print(msg)
                 logging.warning(msg)
-                self.run_info_register(sucess=False)
+                self.run_info_register(sucess=False)    # 记录运行情况
                 continue
 
             try:
@@ -561,7 +562,7 @@ class pickup_emp():
                 self.run_info_register(sucess=False)
                 continue
 
-            self.run_info_register(sucess=True)
+            self.run_info_register(sucess=True)     # 记录运行信息：成功
             logging.info(msg + ' — 完成')
 
         self.update_db_dwdms()  # 将单位代码写入单位代码库
@@ -622,7 +623,6 @@ if __name__ == '__main__':
     lt1 = ['emp_sample.docx','emp_xxb.docx']
     lt2 = ['emp_sample_word2003.doc','emp_sample_word2003_gif.doc','emp_sample_word2003_png.doc']
     lt5 = ['pb.doc']
-
 
     w = pickup_emp(lt0)
 
