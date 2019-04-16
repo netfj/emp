@@ -203,8 +203,6 @@ class pickup_emp():
                 continue
             self.imgData = doc.part.related_parts[contentID]._blob
             break
-
-
         return True     # 成功
 
 
@@ -213,32 +211,47 @@ class pickup_emp():
         file = re.sub('（[0-9]*人）','',self.docx_file)    #去掉（99人）的字样
         path2 = os.path.dirname(file)
         path1 = os.path.dirname(path2)
-        p2 = path1[path1.rfind('\\') + 1:]
-        p1 = path2[path2.rfind('\\') + 1:]
-        dm_bm = p1[0:2]
-        dm_ks = dm_bm + p2[0:2]
-        mc_bm = p1[p1.find('.') + 1:]
-        mc_ks = p2[p2.find('.') + 1:]
-        self.dwdm.append((dm_bm,mc_bm))
-        self.dwdm.append((dm_ks,mc_ks))
 
+        n = path1.rfind('\\')
+        bmdm = path1[n+1: n+3]              # 部门代码
+        bmmc = path1[path1.rfind('.') + 1:] # 部门名称
+
+        m = path2.rfind('\\')
+        ksdm = bmdm + path2[m+1: m+3]       # 科室代码
+        ksmc = path2[path2.rfind('.')+1:]   # 科室名称
+
+        # bmdm = re.sub('\D','',bmdm)
+        # if len(bmdm)<2:
+        #     bmdm = '99'
+        #     bmmc = '其他'
+
+        ksdm = re.sub('\D','',ksdm)
+        if len(ksdm)<2:
+            bmdm = '99'
+            bmmc = '其他'
+            ksdm = '9999'
+            ksmc = '其他'
+
+        if (bmdm,bmmc) not in self.dwdm: self.dwdm.append((bmdm,bmmc))
+        if (ksdm,ksmc) not in self.dwdm: self.dwdm.append((ksdm,ksmc))
 
     # 将单位代码库 self.dwdm 写数数据库 employee.dwdms
     def update_db_dwdms(self):
         # 提取单位代码库中已经有的项目，防止重复冲突
         dwdms = Dwdm.query.all()
         dwdms_exist = [i.dm for i in dwdms]
+        print('\n dwdms_exist:',dwdms_exist)
 
         # 本次运行生成的，将要输入的库，先进行比较
-        dwdm_new = [i
-                    for i in self.dwdm
-                    if i[0] not in dwdms_exist]
+        print('self.dwdm: ',self.dwdm)
+        dwdm_new = []
+        [dwdm_new.append(i) for i in self.dwdm if not i[0] in dwdms_exist ]    # 去重
+        print('\n dwdm_new: ',dwdm_new)
 
-        # 将需要补充的 dwdm_new  写入数据库
+        # 将需要补充的 dwdm_new 写入数据库
         if len(dwdm_new)==0: return True
         logging.info('新增单位代码库：{}'.format(dwdm_new))
         try:
-            # self.db.session.execute(Dwdm.__table__.insert(),dwdm_new)
             add_values = '{}'.format(dwdm_new)[1:-1]    #列表转换为字符，并且去掉首尾的 []
             sql = "insert into dwdms(dm,mc) values {}".format(add_values)
             self.db.session.execute(sql)
@@ -601,6 +614,8 @@ if __name__ == '__main__':
     # path = r'v:\User\人员档案资料\01.机关\01.办公室（11人）'
     # path = r'v:\User\人员档案资料\02.直属单位\02.市政中心（15人）\徐珍珍.doc'
     path = r'c:\TEMP\tmp2'
+    # path = r'c:\TEMP\tmp2\10.部门一\20.科室2'
+
     f = get_file_list(path=path)
     lt0 = f.file_list
 
