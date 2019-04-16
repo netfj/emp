@@ -220,7 +220,7 @@ class pickup_emp():
         ksdm = bmdm + path2[m+1: m+3]       # 科室代码
         ksmc = path2[path2.rfind('.')+1:]   # 科室名称
 
-        # bmdm = re.sub('\D','',bmdm)
+        # bmdm = re.sub('\D', '', bmdm)
         # if len(bmdm)<2:
         #     bmdm = '99'
         #     bmmc = '其他'
