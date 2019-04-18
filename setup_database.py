@@ -77,7 +77,7 @@ class Dwdm(db.Model):
 class Person(db.Model):
     __tablename__ = "persons"
     id              = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    id_dwdm         = db.Column(db.Integer)
+    id_dwdm         = db.Column(db.String(10))
     name            = db.Column(db.String(64))
     gender          = db.Column(db.String(2))
     birthday        = db.Column(db.String(30))

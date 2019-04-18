@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>人员档案列表</title>
+</head>
+<body>
+<p><h1>人员档案管理系统</h1></p>
+<hr>
+<ul>
+    {% for x in dwdm %}
+        {{ x.dm }}.{{ x.mc }}<a href="{{ url_for('query_bm',bmdm=x.id) }}"></a>
+        <br>
+    {% endfor %}
+
+</ul>
+</body>
+</html>

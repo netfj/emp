@@ -220,8 +220,8 @@ class pickup_emp():
         ksdm = bmdm + path2[m+1: m+3]       # 科室代码
         ksmc = path2[path2.rfind('.')+1:]   # 科室名称
 
-        bmdm = re.sub('\D', '', bmdm)
-        ksdm = re.sub('\D','',ksdm)
+        bmdm = re.sub('\D', '', bmdm)       # 去除非数字字符
+        ksdm = re.sub('\D','',ksdm)         # 去除非数字字符
 
         if len(ksdm)<=2:
             bmdm = '99'
@@ -232,7 +232,7 @@ class pickup_emp():
         if (bmdm,bmmc) not in self.dwdm: self.dwdm.append((bmdm,bmmc))
         if (ksdm,ksmc) not in self.dwdm: self.dwdm.append((ksdm,ksmc))
 
-        self.data2db.update({'dwdm': {'id_dwdm': ksdm}})   # todo
+        self.data2db.update({'dwdm': {'id_dwdm': ksdm}})
 
     # 将单位代码库 self.dwdm 写数数据库 employee.dwdms
     def update_db_dwdms(self):
@@ -468,7 +468,7 @@ class pickup_emp():
                 d2b[n].update({'id_person':result.lastrowid})
             self.db.session.execute(Home.__table__.insert(),d2b)
 
-            # 写入单位代码 #todo 2
+            # 写入单位代码
             d2b = self.data2db['dwdm']
             self.db.session.query(Person).filter(Person.id == result.lastrowid).update(d2b)
 
