@@ -14,9 +14,14 @@ logging.info('test')
 @app.route('/')
 def hello_world():
     dwdm = Dwdm.query.all()
-    for x in dwdm:
-        print(x.id,x.dm,x.mc)
-    return render_template('main_query.html',dwdm = dwdm)
+    persons = Person.query.limit(20)
+    return render_template('test.html',dwdm=dwdm,persons=persons)
+
+@app.route('/list_dw/<dwdm>')
+def list_dw(dwdm):
+    print(dwdm)
+    return 'dwdm:__{}'.format(dwdm)
+
 
 if __name__ == '__main__':
     app.run()

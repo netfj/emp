@@ -9,10 +9,9 @@
 <hr>
 <ul>
     {% for x in dwdm %}
-        {{ x.dm }}.{{ x.mc }}<a href="{{ url_for('query_bm',bmdm=x.id) }}"></a>
+        {{ x.dm }}.{{ x.mc }}<a href="{{ url_for('query_bm',bmdm=x.id) }}">
         <br>
     {% endfor %}
-
 </ul>
 </body>
 </html>
